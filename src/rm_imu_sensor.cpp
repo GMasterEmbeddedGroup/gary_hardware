@@ -85,7 +85,9 @@ namespace gary_hardware {
         }
         int update_rate = std::stoi(info.hardware_parameters.at("update_rate"));
         RCLCPP_DEBUG(rclcpp::get_logger("rm_imu_system"), "using update rate %d", update_rate);
-        double threshold = 2.0f / (double)update_rate;
+
+        //calculate offline detection threshold
+        double threshold = 1.0f / (double)update_rate;
         if (threshold < 0.1f) threshold = 0.1f;
         if (threshold > 1.0f) threshold = 1.0f;
 
