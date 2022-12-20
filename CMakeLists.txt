@@ -30,7 +30,9 @@ find_package(rclcpp_lifecycle REQUIRED)
 add_library(${PROJECT_NAME} SHARED
         src/rm_imu_sensor.cpp
         src/utils/fp16_convert.cpp
-        src/utils/offline_detector.cpp)
+        src/utils/offline_detector.cpp
+        src/rm_motor_system.cpp
+        src/utils/rm_motors.cpp)
 
 target_include_directories(${PROJECT_NAME} PRIVATE include)
 
