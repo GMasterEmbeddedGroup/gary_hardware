@@ -72,6 +72,7 @@ namespace gary_hardware {
                              "[motor name %s id %d type %s] using custom update rate %d", motor_name.c_str(), motor_id,
                              motor_type.c_str(), update_rate);
             }
+            //calculate offline detection threshold
             double threshold = 1.0f / (double)update_rate;
             if (threshold < 0.1f) threshold = 0.1f;
             if (threshold > 1.0f) threshold = 1.0f;
@@ -197,12 +198,12 @@ namespace gary_hardware {
         for (const auto &i: this->motors) {
 
             struct can_frame can_recv_frame{};
-            //read
+            //attempt to read feedback
             if (this->can_receiver->read(i.motor->feedback_id, &can_recv_frame)) {
                 RCLCPP_DEBUG(rclcpp::get_logger("rm_motor_system"), "can frame read succ");
-
                 //decode
                 if (i.motor->feedback(can_recv_frame.data)) {
+                    //read success
                     i.offlineDetector->update(true);
                 } else {
                     RCLCPP_DEBUG(rclcpp::get_logger("rm_motor_system"), "[id 0x%X] data decode failed",
@@ -213,7 +214,7 @@ namespace gary_hardware {
                 RCLCPP_DEBUG(rclcpp::get_logger("rm_motor_system"), "[id 0x%X] can read failed", i.motor->feedback_id);
                 i.offlineDetector->update(false);
             }
-
+            //update offline status
             *i.offline = i.offlineDetector->offline;
         }
 
