@@ -73,7 +73,7 @@ namespace gary_hardware {
                              motor_type.c_str(), update_rate);
             }
             //calculate offline detection threshold
-            double threshold = 1.0f / (double)update_rate;
+            double threshold = 1.0f / (double) update_rate;
             if (threshold < 0.1f) threshold = 0.1f;
             if (threshold > 1.0f) threshold = 1.0f;
 
@@ -165,7 +165,12 @@ namespace gary_hardware {
         //foreach all motor
         for (const auto &i: this->motors) {
             //bind feedback can id
-            this->can_receiver->bind(i.motor->feedback_id);
+            if (!this->can_receiver->bind(i.motor->feedback_id)) {
+                RCLCPP_ERROR(rclcpp::get_logger("rm_motor_system"), "failed to bind can id 0x%x to bus",
+                             i.motor->feedback_id);
+                this->status_ = hardware_interface::status::UNKNOWN;
+                return hardware_interface::return_type::ERROR;
+            }
             //initialize cmd with zero
             *i.cmd = 0;
             //update offline detector
@@ -214,8 +219,14 @@ namespace gary_hardware {
                 RCLCPP_DEBUG(rclcpp::get_logger("rm_motor_system"), "[id 0x%X] can read failed", i.motor->feedback_id);
                 i.offlineDetector->update(false);
             }
+
             //update offline status
             *i.offline = i.offlineDetector->offline;
+            if (i.offlineDetector->offline) {
+                rclcpp::Clock clock;
+                RCLCPP_WARN_THROTTLE(rclcpp::get_logger("rm_motor_system"), clock, 1000, "[name %s fdb 0x%x] offline",
+                                     i.motor_name.c_str(), i.motor->feedback_id);
+            }
         }
 
         return hardware_interface::return_type::OK;
@@ -251,8 +262,9 @@ namespace gary_hardware {
             RCLCPP_DEBUG(rclcpp::get_logger("rm_motor_system"), "can frame write succ");
             return hardware_interface::return_type::OK;
         } else {
-            RCLCPP_DEBUG(rclcpp::get_logger("rm_motor_system"), "[id 0x%X dlc %d] can write failed", frame.can_id,
-                         frame.can_dlc);
+            rclcpp::Clock clock;
+            RCLCPP_WARN_THROTTLE(rclcpp::get_logger("rm_motor_system"), clock, 1000, "[cmd 0x%x] can send failed",
+                                 this->cmd_id);
         }
         return hardware_interface::return_type::ERROR;
     }
