@@ -210,6 +210,28 @@ namespace gary_hardware {
         //foreach motor and read the corresponding can data
         for (const auto &i: this->motors) {
 
+            //update offline status
+            *i.offline = i.offlineDetector->offline;
+            if (i.offlineDetector->offline) {
+                rclcpp::Clock clock;
+                RCLCPP_WARN_THROTTLE(rclcpp::get_logger(this->system_name), clock, 1000, "[%s] offline",
+                                     i.motor_name.c_str());
+            }
+
+            //check if socket is down
+            if (!this->can_receiver->is_opened[i.motor->feedback_id]) {
+                //reopen socket
+                if (!this->can_receiver->open_socket(i.motor->feedback_id)) {
+                    //reopen failed
+                    rclcpp::Clock clock;
+                    RCLCPP_WARN_THROTTLE(rclcpp::get_logger(this->system_name), clock, 1000,
+                                         "[%s] can receiver reopen failed, id 0x%x",
+                                         this->can_receiver->ifname.c_str(), i.motor->feedback_id);
+                    i.offlineDetector->update(false);
+                    continue;
+                }
+            }
+
             struct can_frame can_recv_frame{};
             //attempt to read feedback
             if (this->can_receiver->read(i.motor->feedback_id, &can_recv_frame)) {
@@ -230,14 +252,6 @@ namespace gary_hardware {
                              this->can_receiver->ifname.c_str(), i.motor->feedback_id);
                 i.offlineDetector->update(false);
             }
-
-            //update offline status
-            *i.offline = i.offlineDetector->offline;
-            if (i.offlineDetector->offline) {
-                rclcpp::Clock clock;
-                RCLCPP_WARN_THROTTLE(rclcpp::get_logger(this->system_name), clock, 1000, "[%s] offline",
-                                     i.motor_name.c_str());
-            }
         }
 
         return hardware_interface::return_type::OK;
@@ -246,6 +260,18 @@ namespace gary_hardware {
     hardware_interface::return_type RMMotorSystem::write() {
 
         RCLCPP_DEBUG(rclcpp::get_logger(this->system_name), "writing");
+
+        //check if socket is down
+        if (!this->can_sender->is_opened) {
+            //reopen socket
+            if (!this->can_sender->open_socket()) {
+                rclcpp::Clock clock;
+                RCLCPP_WARN_THROTTLE(rclcpp::get_logger(this->system_name), clock, 1000,
+                                     "[%s] can sender reopen failed",
+                                     this->can_sender->ifname.c_str());
+                return hardware_interface::return_type::ERROR;
+            }
+        }
 
         struct can_frame frame{};
         frame.can_dlc = 8;

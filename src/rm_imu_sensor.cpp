@@ -154,6 +154,28 @@ namespace gary_hardware {
 
         RCLCPP_DEBUG(rclcpp::get_logger(this->sensor_name), "reading");
 
+        //update offline status
+        this->offline = static_cast<double>(this->offlineDetector->offline);
+        if (this->offlineDetector->offline) {
+            rclcpp::Clock clock;
+            RCLCPP_WARN_THROTTLE(rclcpp::get_logger(this->sensor_name), clock, 1000, "[%s] offline",
+                                 this->sensor_name.c_str());
+        }
+
+        //check if socket is down
+        for (int can_id: this->can_ids) {
+            if (!this->can_receiver->is_opened[can_id]) {
+                //reopen socket
+                if (!this->can_receiver->open_socket(can_id)) {
+                    rclcpp::Clock clock;
+                    RCLCPP_WARN_THROTTLE(rclcpp::get_logger(this->sensor_name), clock, 1000,
+                                         "[%s] can receiver reopen failed, id 0x%x",
+                                         this->can_receiver->ifname.c_str(), can_id);
+                    this->offlineDetector->update(false);
+                    return hardware_interface::return_type::ERROR;
+                }
+            }
+        }
 
         struct can_frame frame{};
         int read_succ_cnt = 0;
@@ -193,12 +215,7 @@ namespace gary_hardware {
 
         //update offline status
         this->offlineDetector->update(read_succ_cnt > 0);
-        this->offline = static_cast<double>(this->offlineDetector->offline);
-        if (this->offlineDetector->offline) {
-            rclcpp::Clock clock;
-            RCLCPP_WARN_THROTTLE(rclcpp::get_logger(this->sensor_name), clock, 1000, "[%s] offline",
-                                 this->sensor_name.c_str());
-        }
+
         return hardware_interface::return_type::OK;
     }
 
