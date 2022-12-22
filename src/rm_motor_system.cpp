@@ -7,13 +7,11 @@
 
 namespace gary_hardware {
 
-    RMMotorSystem::RMMotorSystem() {
-        RCLCPP_INFO(rclcpp::get_logger("rm_motor_system"), "rm motor system build time %s %s", __DATE__, __TIME__);
-    }
-
     hardware_interface::return_type RMMotorSystem::configure(const hardware_interface::HardwareInfo &info) {
+        //get system name
+        this->system_name = info.name;
 
-        RCLCPP_DEBUG(rclcpp::get_logger("rm_motor_system"), "configuring");
+        RCLCPP_DEBUG(rclcpp::get_logger(this->system_name), "configuring");
 
         //call the base class initializer
         if (configure_default(info) != hardware_interface::return_type::OK) {
@@ -23,12 +21,12 @@ namespace gary_hardware {
 
         //check parameter "can_bus"
         if (info.hardware_parameters.count("can_bus") != 1) {
-            RCLCPP_ERROR(rclcpp::get_logger("rm_motor_system"), "invalid can bus definition in urdf");
+            RCLCPP_ERROR(rclcpp::get_logger(this->system_name), "invalid can bus definition in urdf");
             this->status_ = hardware_interface::status::UNKNOWN;
             return hardware_interface::return_type::ERROR;
         }
         std::string bus_name = info.hardware_parameters.at("can_bus");
-        RCLCPP_DEBUG(rclcpp::get_logger("rm_motor_system"), "using can bus %s", bus_name.c_str());
+        RCLCPP_DEBUG(rclcpp::get_logger(this->system_name), "using can bus %s", bus_name.c_str());
 
         //create socket can sender and receiver
         this->can_sender = std::make_shared<driver::can::SocketCANSender>(bus_name);
@@ -36,21 +34,21 @@ namespace gary_hardware {
 
         //check parameter "cmd_id"
         if (info.hardware_parameters.count("cmd_id") != 1) {
-            RCLCPP_ERROR(rclcpp::get_logger("rm_motor_system"), "invalid cmd id definition in urdf");
+            RCLCPP_ERROR(rclcpp::get_logger(this->system_name), "invalid cmd id definition in urdf");
             this->status_ = hardware_interface::status::UNKNOWN;
             return hardware_interface::return_type::ERROR;
         }
         this->cmd_id = std::stoi(info.hardware_parameters.at("cmd_id"), nullptr, 16);
-        RCLCPP_DEBUG(rclcpp::get_logger("rm_motor_system"), "using cmd id %d", cmd_id);
+        RCLCPP_DEBUG(rclcpp::get_logger(this->system_name), "using cmd id 0x%x", cmd_id);
 
-        RCLCPP_DEBUG(rclcpp::get_logger("rm_motor_system"), "configure %d motors", info.joints.size());
+        RCLCPP_INFO(rclcpp::get_logger(this->system_name), "configuring %d motors", info.joints.size());
 
         //foreach motor
         for (const auto &i: info.joints) {
             std::string motor_name = i.name;
             //check parameter "motor_id"
             if (i.parameters.count("motor_id") != 1) {
-                RCLCPP_ERROR(rclcpp::get_logger("rm_motor_system"), "invalid motor id in urdf");
+                RCLCPP_ERROR(rclcpp::get_logger(this->system_name), "invalid motor id in urdf");
                 this->status_ = hardware_interface::status::UNKNOWN;
                 return hardware_interface::return_type::ERROR;
             }
@@ -58,7 +56,7 @@ namespace gary_hardware {
 
             //check parameter "motor_type"
             if (i.parameters.count("motor_type") != 1) {
-                RCLCPP_ERROR(rclcpp::get_logger("rm_motor_system"), "invalid motor type in urdf");
+                RCLCPP_ERROR(rclcpp::get_logger(this->system_name), "invalid motor type in urdf");
                 this->status_ = hardware_interface::status::UNKNOWN;
                 return hardware_interface::return_type::ERROR;
             }
@@ -68,9 +66,9 @@ namespace gary_hardware {
             int update_rate = 1000;
             if (i.parameters.count("update_rate") == 1) {
                 update_rate = std::stoi(i.parameters.at("update_rate"));
-                RCLCPP_DEBUG(rclcpp::get_logger("rm_motor_system"),
-                             "[motor name %s id %d type %s] using custom update rate %d", motor_name.c_str(), motor_id,
-                             motor_type.c_str(), update_rate);
+                RCLCPP_INFO(rclcpp::get_logger(this->system_name),
+                            "[motor name %s id %d type %s] using custom update rate %d",
+                            motor_name.c_str(), motor_id, motor_type.c_str(), update_rate);
             }
             //calculate offline detection threshold
             double threshold = 1.0f / (double) update_rate;
@@ -90,14 +88,14 @@ namespace gary_hardware {
             } else if (motor_type == "m3508_gearless") {
                 new_motor = std::make_shared<utils::RMMotor>(utils::M3508_GEARLESS, motor_id);
             } else {
-                RCLCPP_ERROR(rclcpp::get_logger("rm_motor_system"), "invalid motor type");
+                RCLCPP_ERROR(rclcpp::get_logger(this->system_name), "invalid motor type");
                 this->status_ = hardware_interface::status::UNKNOWN;
                 return hardware_interface::return_type::ERROR;
             }
 
             //check if motor id and cmd id is mismatched
             if (new_motor->cmd_id != this->cmd_id) {
-                RCLCPP_ERROR(rclcpp::get_logger("rm_motor_system"), "motor cmd id mismatched");
+                RCLCPP_ERROR(rclcpp::get_logger(this->system_name), "motor cmd id mismatched");
                 this->status_ = hardware_interface::status::UNKNOWN;
                 return hardware_interface::return_type::ERROR;
             }
@@ -110,15 +108,32 @@ namespace gary_hardware {
             motor_ctrl.offlineDetector = std::make_shared<utils::OfflineDetector>(threshold);
             motor_ctrl.offline = std::make_shared<double>(0);
 
+            //bind feedback can id
+            if (!this->can_receiver->open_socket(new_motor->feedback_id)) {
+                RCLCPP_ERROR(rclcpp::get_logger(this->system_name), "[%s] failed to bind can id 0x%x to bus",
+                             this->can_receiver->ifname.c_str(), new_motor->feedback_id);
+                this->status_ = hardware_interface::status::UNKNOWN;
+                return hardware_interface::return_type::ERROR;
+            }
+
             //add to motors
             this->motors.emplace_back(motor_ctrl);
 
-            RCLCPP_DEBUG(rclcpp::get_logger("rm_motor_system"), "new motor type %s cmd 0x%X fdb 0x%X",
-                         motor_type.c_str(), new_motor->cmd_id, new_motor->feedback_id);
+            RCLCPP_INFO(rclcpp::get_logger(this->system_name),
+                        "add new motor, name: %s, type: %s, can bus: %s, cmd id: 0x%x, feedback id: 0x%x",
+                        motor_name.c_str(), motor_type.c_str(), bus_name.c_str(), new_motor->cmd_id, new_motor->feedback_id);
+        }
+
+        //open can sender
+        if (!this->can_sender->open_socket()) {
+            RCLCPP_ERROR(rclcpp::get_logger(this->system_name), "[%s] failed to open can sender socket",
+                         this->can_sender->ifname.c_str());
+            this->status_ = hardware_interface::status::UNKNOWN;
+            return hardware_interface::return_type::ERROR;
         }
 
         this->status_ = hardware_interface::status::CONFIGURED;
-        RCLCPP_INFO(rclcpp::get_logger("rm_motor_system"), "configured");
+        RCLCPP_INFO(rclcpp::get_logger(this->system_name), "configured");
         return hardware_interface::return_type::OK;
     }
 
@@ -160,17 +175,10 @@ namespace gary_hardware {
 
     hardware_interface::return_type RMMotorSystem::start() {
 
-        RCLCPP_DEBUG(rclcpp::get_logger("rm_motor_system"), "starting");
+        RCLCPP_DEBUG(rclcpp::get_logger(this->system_name), "starting");
 
         //foreach all motor
         for (const auto &i: this->motors) {
-            //bind feedback can id
-            if (!this->can_receiver->bind(i.motor->feedback_id)) {
-                RCLCPP_ERROR(rclcpp::get_logger("rm_motor_system"), "failed to bind can id 0x%x to bus",
-                             i.motor->feedback_id);
-                this->status_ = hardware_interface::status::UNKNOWN;
-                return hardware_interface::return_type::ERROR;
-            }
             //initialize cmd with zero
             *i.cmd = 0;
             //update offline detector
@@ -179,25 +187,25 @@ namespace gary_hardware {
 
         this->status_ = hardware_interface::status::STARTED;
 
-        RCLCPP_INFO(rclcpp::get_logger("rm_motor_system"), "started");
+        RCLCPP_INFO(rclcpp::get_logger(this->system_name), "started");
 
         return hardware_interface::return_type::OK;
     }
 
     hardware_interface::return_type RMMotorSystem::stop() {
 
-        RCLCPP_DEBUG(rclcpp::get_logger("rm_motor_system"), "stopping");
+        RCLCPP_DEBUG(rclcpp::get_logger(this->system_name), "stopping");
 
         this->status_ = hardware_interface::status::STOPPED;
 
-        RCLCPP_DEBUG(rclcpp::get_logger("rm_motor_system"), "stopped");
+        RCLCPP_DEBUG(rclcpp::get_logger(this->system_name), "stopped");
 
         return hardware_interface::return_type::OK;
     }
 
     hardware_interface::return_type RMMotorSystem::read() {
 
-        RCLCPP_DEBUG(rclcpp::get_logger("rm_motor_system"), "reading");
+        RCLCPP_DEBUG(rclcpp::get_logger(this->system_name), "reading");
 
         //foreach motor and read the corresponding can data
         for (const auto &i: this->motors) {
@@ -205,18 +213,21 @@ namespace gary_hardware {
             struct can_frame can_recv_frame{};
             //attempt to read feedback
             if (this->can_receiver->read(i.motor->feedback_id, &can_recv_frame)) {
-                RCLCPP_DEBUG(rclcpp::get_logger("rm_motor_system"), "can frame read succ");
+                RCLCPP_DEBUG(rclcpp::get_logger(this->system_name), "[%s] can frame read succ",
+                             this->can_receiver->ifname.c_str());
                 //decode
                 if (i.motor->feedback(can_recv_frame.data)) {
                     //read success
                     i.offlineDetector->update(true);
                 } else {
-                    RCLCPP_DEBUG(rclcpp::get_logger("rm_motor_system"), "[id 0x%X] data decode failed",
-                                 i.motor->feedback_id);
+                    RCLCPP_DEBUG(rclcpp::get_logger(this->system_name),
+                                 "[%s] motor data decode failed, name: %s, id: 0x%x",
+                                 this->can_receiver->ifname.c_str(), i.motor_name.c_str(), i.motor->feedback_id);
                     i.offlineDetector->update(false);
                 }
             } else {
-                RCLCPP_DEBUG(rclcpp::get_logger("rm_motor_system"), "[id 0x%X] can read failed", i.motor->feedback_id);
+                RCLCPP_DEBUG(rclcpp::get_logger(this->system_name), "[%s] can read failed id: 0x%X",
+                             this->can_receiver->ifname.c_str(), i.motor->feedback_id);
                 i.offlineDetector->update(false);
             }
 
@@ -224,8 +235,8 @@ namespace gary_hardware {
             *i.offline = i.offlineDetector->offline;
             if (i.offlineDetector->offline) {
                 rclcpp::Clock clock;
-                RCLCPP_WARN_THROTTLE(rclcpp::get_logger("rm_motor_system"), clock, 1000, "[name %s fdb 0x%x] offline",
-                                     i.motor_name.c_str(), i.motor->feedback_id);
+                RCLCPP_WARN_THROTTLE(rclcpp::get_logger(this->system_name), clock, 1000, "[%s] offline",
+                                     i.motor_name.c_str());
             }
         }
 
@@ -234,7 +245,7 @@ namespace gary_hardware {
 
     hardware_interface::return_type RMMotorSystem::write() {
 
-        RCLCPP_DEBUG(rclcpp::get_logger("rm_motor_system"), "writing");
+        RCLCPP_DEBUG(rclcpp::get_logger(this->system_name), "writing");
 
         struct can_frame frame{};
         frame.can_dlc = 8;
@@ -259,12 +270,14 @@ namespace gary_hardware {
 
         //send the can frame
         if (this->can_sender->send(frame)) {
-            RCLCPP_DEBUG(rclcpp::get_logger("rm_motor_system"), "can frame write succ");
+            RCLCPP_DEBUG(rclcpp::get_logger(this->system_name), "[%s] can frame send succ, cmd: 0x%x",
+                         this->can_sender->ifname.c_str(), this->cmd_id);
             return hardware_interface::return_type::OK;
         } else {
             rclcpp::Clock clock;
-            RCLCPP_WARN_THROTTLE(rclcpp::get_logger("rm_motor_system"), clock, 1000, "[cmd 0x%x] can send failed",
-                                 this->cmd_id);
+            RCLCPP_WARN_THROTTLE(rclcpp::get_logger(this->system_name), clock, 1000,
+                                 "[%s] can send failed, cmd: 0x%x",
+                                 this->can_sender->ifname.c_str(), this->cmd_id);
         }
         return hardware_interface::return_type::ERROR;
     }

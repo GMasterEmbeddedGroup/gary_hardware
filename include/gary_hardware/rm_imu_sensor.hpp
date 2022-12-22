@@ -19,8 +19,6 @@ namespace gary_hardware{
     public:
         RCLCPP_SHARED_PTR_DEFINITIONS(RMIMUSensor);
 
-        RMIMUSensor();
-
         hardware_interface::return_type configure(const hardware_interface::HardwareInfo & info) override;
 
         std::vector<hardware_interface::StateInterface> export_state_interfaces() override;

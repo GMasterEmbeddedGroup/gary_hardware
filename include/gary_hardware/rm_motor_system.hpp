@@ -28,8 +28,6 @@ namespace gary_hardware{
     public:
         RCLCPP_SHARED_PTR_DEFINITIONS(RMMotorSystem);
 
-        RMMotorSystem();
-
         hardware_interface::return_type configure(const hardware_interface::HardwareInfo & info) override;
 
         std::vector<hardware_interface::StateInterface> export_state_interfaces() override;
@@ -45,6 +43,7 @@ namespace gary_hardware{
         hardware_interface::return_type write() override;
 
     private:
+        std::string system_name;
         int cmd_id{};
         std::shared_ptr<driver::can::SocketCANSender> can_sender;
         std::shared_ptr<driver::can::SocketCANReceiver> can_receiver;
