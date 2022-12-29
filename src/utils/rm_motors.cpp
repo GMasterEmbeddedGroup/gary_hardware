@@ -11,7 +11,6 @@ RMMotor::RMMotor(MOTOR_TYPEDEF _motor_type, uint8_t _motor_id) {
 
     this->motor_type = _motor_type;
     this->motor_id = _motor_id;
-    this->feedback_id = _motor_id + 0x200;
     double rpm2rads = 2.0f * M_PI / 60.0f;
 
     double gear_ratio;
@@ -20,13 +19,14 @@ RMMotor::RMMotor(MOTOR_TYPEDEF _motor_type, uint8_t _motor_id) {
 
     switch (_motor_type) {
         case M3508: {
-            //calc cmd id by feedback id
+            //calc cmd id and feedback id
+            this->feedback_id = _motor_id + 0x200;
             if (this->feedback_id >= 0x201 && this->feedback_id <= 0x204) {
                 this->cmd_id = 0x200;
             } else if (this->feedback_id >= 0x205 && this->feedback_id <= 0x208) {
                 this->cmd_id = 0x1FF;
             } else {
-                throw std::runtime_error("invalid motor feedback id 0x%x" + std::to_string(this->feedback_id));
+                throw std::runtime_error("invalid motor feedback id" + std::to_string(this->feedback_id));
             }
 
             //set motor parameters
@@ -42,13 +42,14 @@ RMMotor::RMMotor(MOTOR_TYPEDEF _motor_type, uint8_t _motor_id) {
             break;
         }
         case M2006: {
-            //calc cmd id by feedback id
+            //calc cmd id and feedback id
+            this->feedback_id = _motor_id + 0x200;
             if (this->feedback_id >= 0x201 && this->feedback_id <= 0x204) {
                 this->cmd_id = 0x200;
             } else if (this->feedback_id >= 0x205 && this->feedback_id <= 0x208) {
                 this->cmd_id = 0x1FF;
             } else {
-                throw std::runtime_error("invalid motor feedback id 0x%x" + std::to_string(this->feedback_id));
+                throw std::runtime_error("invalid motor feedback id" + std::to_string(this->feedback_id));
             }
 
             //set motor parameters
@@ -65,13 +66,14 @@ RMMotor::RMMotor(MOTOR_TYPEDEF _motor_type, uint8_t _motor_id) {
         }
 
         case M6020: {
-            //calc cmd id by feedback id
+            //calc cmd id and feedback id
+            this->feedback_id = _motor_id + 0x204;
             if (this->feedback_id >= 0x205 && this->feedback_id <= 0x208) {
                 this->cmd_id = 0x1FF;
             } else if (this->feedback_id >= 0x209 && this->feedback_id <= 0x20B) {
                 this->cmd_id = 0x2FF;
             } else {
-                throw std::runtime_error("invalid motor feedback id 0x%x" + std::to_string(this->feedback_id));
+                throw std::runtime_error("invalid motor feedback id" + std::to_string(this->feedback_id));
             }
 
             //set motor parameters
@@ -88,13 +90,14 @@ RMMotor::RMMotor(MOTOR_TYPEDEF _motor_type, uint8_t _motor_id) {
         }
 
         case M3508_GEARLESS: {
-            //calc cmd id by feedback id
+            //calc cmd id and feedback id
+            this->feedback_id = _motor_id + 0x200;
             if (this->feedback_id >= 0x201 && this->feedback_id <= 0x204) {
                 this->cmd_id = 0x200;
             } else if (this->feedback_id >= 0x205 && this->feedback_id <= 0x208) {
                 this->cmd_id = 0x1FF;
             } else {
-                throw std::runtime_error("invalid motor feedback id 0x%x" + std::to_string(this->feedback_id));
+                throw std::runtime_error("invalid motor feedback id" + std::to_string(this->feedback_id));
             }
 
             //set motor parameters
