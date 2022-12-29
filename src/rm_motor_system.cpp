@@ -83,7 +83,7 @@ namespace gary_hardware {
                 new_motor = std::make_shared<utils::RMMotor>(utils::M3508, motor_id);
             } else if (motor_type == "m2006") {
                 new_motor = std::make_shared<utils::RMMotor>(utils::M2006, motor_id);
-            } else if (motor_type == "M6020") {
+            } else if (motor_type == "m6020") {
                 new_motor = std::make_shared<utils::RMMotor>(utils::M6020, motor_id);
             } else if (motor_type == "m3508_gearless") {
                 new_motor = std::make_shared<utils::RMMotor>(utils::M3508_GEARLESS, motor_id);
@@ -214,7 +214,7 @@ namespace gary_hardware {
             *i.offline = i.offlineDetector->offline;
             if (i.offlineDetector->offline) {
                 rclcpp::Clock clock;
-                RCLCPP_WARN_THROTTLE(rclcpp::get_logger(this->system_name), clock, 1000, "[%s] offline",
+                RCLCPP_ERROR_THROTTLE(rclcpp::get_logger(this->system_name), clock, 1000, "[%s] offline",
                                      i.motor_name.c_str());
             }
 

@@ -158,7 +158,7 @@ namespace gary_hardware {
         this->offline = static_cast<double>(this->offlineDetector->offline);
         if (this->offlineDetector->offline) {
             rclcpp::Clock clock;
-            RCLCPP_WARN_THROTTLE(rclcpp::get_logger(this->sensor_name), clock, 1000, "[%s] offline",
+            RCLCPP_ERROR_THROTTLE(rclcpp::get_logger(this->sensor_name), clock, 1000, "[%s] offline",
                                  this->sensor_name.c_str());
         }
 
