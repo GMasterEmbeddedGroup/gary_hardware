@@ -112,8 +112,6 @@ namespace gary_hardware {
             if (!this->can_receiver->open_socket(new_motor->feedback_id)) {
                 RCLCPP_ERROR(rclcpp::get_logger(this->system_name), "[%s] failed to bind can id 0x%x to bus",
                              this->can_receiver->ifname.c_str(), new_motor->feedback_id);
-                this->status_ = hardware_interface::status::UNKNOWN;
-                return hardware_interface::return_type::ERROR;
             }
 
             //add to motors
@@ -128,8 +126,6 @@ namespace gary_hardware {
         if (!this->can_sender->open_socket()) {
             RCLCPP_ERROR(rclcpp::get_logger(this->system_name), "[%s] failed to open can sender socket",
                          this->can_sender->ifname.c_str());
-            this->status_ = hardware_interface::status::UNKNOWN;
-            return hardware_interface::return_type::ERROR;
         }
 
         this->status_ = hardware_interface::status::CONFIGURED;

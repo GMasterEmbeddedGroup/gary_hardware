@@ -93,8 +93,6 @@ namespace gary_hardware {
             if (!this->can_receiver->open_socket(can_id)) {
                 RCLCPP_ERROR(rclcpp::get_logger(this->sensor_name), "[%s] failed to bind can id 0x%x to bus",
                              this->can_receiver->ifname.c_str(), can_id);
-                this->status_ = hardware_interface::status::UNKNOWN;
-                return hardware_interface::return_type::ERROR;
             }
         }
 
