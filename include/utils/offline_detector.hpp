@@ -7,7 +7,7 @@ using namespace std::chrono;
 namespace utils {
     class OfflineDetector {
     public:
-        OfflineDetector(double duration);
+        explicit OfflineDetector(double duration);
         void config(double duration);
         void update(bool state);
         bool offline;
