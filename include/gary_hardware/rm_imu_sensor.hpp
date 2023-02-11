@@ -17,7 +17,7 @@ namespace gary_hardware{
     class RMIMUSensor :public hardware_interface::BaseInterface<hardware_interface::SensorInterface>
     {
     public:
-        RCLCPP_SHARED_PTR_DEFINITIONS(RMIMUSensor);
+        RCLCPP_SHARED_PTR_DEFINITIONS(RMIMUSensor)
 
         hardware_interface::return_type configure(const hardware_interface::HardwareInfo & info) override;
 

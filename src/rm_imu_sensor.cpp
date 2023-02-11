@@ -177,9 +177,20 @@ namespace gary_hardware {
 
         struct can_frame frame{};
         int read_succ_cnt = 0;
-
+        bool succ = false;
         //read orientation
-        if (this->can_receiver->read(this->can_ids[0], &frame)) {
+        //get the latest data, read until socket buffer is empty
+        while (true) {
+            struct can_frame can_recv_frame_temp{};
+            if (this->can_receiver->read(this->can_ids[0], &can_recv_frame_temp)) {
+                frame = can_recv_frame_temp;
+                succ |= true;
+            } else {
+                succ |= false;
+                break;
+            }
+        }
+        if (succ) {
             auto x = (uint16_t) (frame.data[0] | frame.data[1] << 8);
             this->sensor_data[0] = (double) utils::half_to_float(x);
             auto y = (uint16_t) (frame.data[2] | frame.data[3] << 8);
@@ -191,7 +202,19 @@ namespace gary_hardware {
             read_succ_cnt++;
         }
         //read gyroscope
-        if (can_receiver->read(this->can_ids[1], &frame)) {
+        //get the latest data, read until socket buffer is empty
+        succ = false;
+        while (true) {
+            struct can_frame can_recv_frame_temp{};
+            if (this->can_receiver->read(this->can_ids[1], &can_recv_frame_temp)) {
+                frame = can_recv_frame_temp;
+                succ |= true;
+            } else {
+                succ |= false;
+                break;
+            }
+        }
+        if (succ) {
             auto x = (int16_t) (frame.data[0] | frame.data[1] << 8);
             this->sensor_data[4] = (double) utils::half_to_float(x);
             auto y = (int16_t) (frame.data[2] | frame.data[3] << 8);
@@ -201,7 +224,19 @@ namespace gary_hardware {
             read_succ_cnt++;
         }
         //read acceleration
-        if (can_receiver->read(this->can_ids[2], &frame)) {
+        //get the latest data, read until socket buffer is empty
+        succ = false;
+        while (true) {
+            struct can_frame can_recv_frame_temp{};
+            if (this->can_receiver->read(this->can_ids[2], &can_recv_frame_temp)) {
+                frame = can_recv_frame_temp;
+                succ |= true;
+            } else {
+                succ |= false;
+                break;
+            }
+        }
+        if (succ) {
             auto x = (int16_t) (frame.data[0] | frame.data[1] << 8);
             this->sensor_data[7] = (double) utils::half_to_float(x);
             auto y = (int16_t) (frame.data[2] | frame.data[3] << 8);

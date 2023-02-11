@@ -26,7 +26,7 @@ namespace gary_hardware{
     class RMMotorSystem :public hardware_interface::BaseInterface<hardware_interface::SystemInterface>
     {
     public:
-        RCLCPP_SHARED_PTR_DEFINITIONS(RMMotorSystem);
+        RCLCPP_SHARED_PTR_DEFINITIONS(RMMotorSystem)
 
         hardware_interface::return_type configure(const hardware_interface::HardwareInfo & info) override;
 

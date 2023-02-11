@@ -230,7 +230,21 @@ namespace gary_hardware {
 
             struct can_frame can_recv_frame{};
             //attempt to read feedback
-            if (this->can_receiver->read(i.motor->feedback_id, &can_recv_frame)) {
+
+            //get the latest data, read until socket buffer is empty
+            bool succ = false;
+            while (true) {
+                struct can_frame can_recv_frame_temp{};
+                if (this->can_receiver->read(i.motor->feedback_id, &can_recv_frame_temp)) {
+                    can_recv_frame = can_recv_frame_temp;
+                    succ |= true;
+                } else {
+                    succ |= false;
+                    break;
+                }
+            }
+
+            if (succ) {
                 RCLCPP_DEBUG(rclcpp::get_logger(this->system_name), "[%s] can frame read succ",
                              this->can_receiver->ifname.c_str());
                 //decode
