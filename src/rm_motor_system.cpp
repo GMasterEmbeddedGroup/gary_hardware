@@ -180,6 +180,7 @@ namespace gary_hardware {
         for (const auto &i: this->motors) {
             //initialize cmd with zero
             *i.cmd = 0;
+            *i.cmd_raw = 0;
             //update offline detector
             i.offlineDetector->update(true);
         }
