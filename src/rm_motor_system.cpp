@@ -104,6 +104,7 @@ namespace gary_hardware {
             rm_motor_ctrl_t motor_ctrl;
             motor_ctrl.motor = new_motor;
             motor_ctrl.cmd = std::make_shared<double>(0);
+            motor_ctrl.cmd_raw = std::make_shared<double>(0);
             motor_ctrl.motor_name = motor_name;
             motor_ctrl.offlineDetector = std::make_shared<utils::OfflineDetector>(threshold);
             motor_ctrl.offline = std::make_shared<double>(0);
@@ -163,7 +164,9 @@ namespace gary_hardware {
         for (const auto &i: this->motors) {
             auto motor_name = i.motor_name;
             auto cmd = i.cmd.get();
+            auto cmd_raw = i.cmd_raw.get();
             command_interfaces.emplace_back(motor_name, "effort", cmd);
+            command_interfaces.emplace_back(motor_name, "raw", cmd_raw);
         }
 
         return command_interfaces;
@@ -290,18 +293,28 @@ namespace gary_hardware {
         //foreach motor and fill the can cmd
         for (const auto &i: this->motors) {
             //encode motor command
-            i.motor->cmd(*i.cmd);
+            uint8_t motor_cmd[2];
+
+            if (*i.cmd != 0) {
+                i.motor->cmd(*i.cmd);
+                motor_cmd[0] = i.motor->control_cmd[0];
+                motor_cmd[1] = i.motor->control_cmd[1];
+            } else {
+                motor_cmd[0] = static_cast<int16_t>(*i.cmd_raw) >> 8;
+                motor_cmd[1] = static_cast<int16_t>(*i.cmd_raw) & 0xFF;
+            }
 
             //get motor id
             int id = i.motor->motor_id;
             if (id >= 5) id -= 4;
 
             //fill the cmd in a can frame
-            frame.data[(id - 1) * 2 + 0] = i.motor->control_cmd[0];
-            frame.data[(id - 1) * 2 + 1] = i.motor->control_cmd[1];
+            frame.data[(id - 1) * 2 + 0] = motor_cmd[0];
+            frame.data[(id - 1) * 2 + 1] = motor_cmd[1];
 
             //always clean the command to keep safe
             *i.cmd = 0;
+            *i.cmd_raw = 0;
         }
 
         //send the can frame

@@ -125,6 +125,7 @@ RMMotor::RMMotor(MOTOR_TYPEDEF _motor_type, uint8_t _motor_id) {
 
     this->feedback_data["position"] = std::make_shared<double>(0);        // rad
     this->feedback_data["encoder"] = std::make_shared<double>(0);         // rad
+    this->feedback_data["encoder_raw"] = std::make_shared<double>(0);         // rad
     this->feedback_data["velocity"] = std::make_shared<double>(0);        // rad/s
     this->feedback_data["effort"] = std::make_shared<double>(0);          // N/m
     if (this->has_temperature_sensor) {
@@ -184,8 +185,11 @@ bool RMMotor::feedback(const uint8_t fdb_data[8]) {
     if (delta > this->max_ecd_original / 2) delta -= this->max_ecd_original;
     *this->feedback_data["position"] += delta * this->position_ratio;
 
-    //get raw ecd
+    //get ecd
     *this->feedback_data["encoder"] = (double) _ecd * this->position_ratio;
+
+    //get raw ecd
+    *this->feedback_data["encoder_raw"] = (double) _ecd;
 
     //get velocity
     *this->feedback_data["velocity"] = static_cast<double>((_rpm)) * this->velocity_ratio;

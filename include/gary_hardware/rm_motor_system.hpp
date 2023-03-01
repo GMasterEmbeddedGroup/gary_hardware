@@ -19,6 +19,7 @@ namespace gary_hardware{
         std::shared_ptr<utils::OfflineDetector> offlineDetector;
         std::string motor_name;
         std::shared_ptr<double> cmd;
+        std::shared_ptr<double> cmd_raw;
         std::shared_ptr<double> offline;
     }rm_motor_ctrl_t;
 
