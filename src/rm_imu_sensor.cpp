@@ -110,12 +110,15 @@ namespace gary_hardware {
         state_interfaces.emplace_back(this->sensor_name, "orientation.y", &this->sensor_data[1]);
         state_interfaces.emplace_back(this->sensor_name, "orientation.z", &this->sensor_data[2]);
         state_interfaces.emplace_back(this->sensor_name, "orientation.w", &this->sensor_data[3]);
-        state_interfaces.emplace_back(this->sensor_name, "angular_velocity.x", &this->sensor_data[4]);
-        state_interfaces.emplace_back(this->sensor_name, "angular_velocity.y", &this->sensor_data[5]);
-        state_interfaces.emplace_back(this->sensor_name, "angular_velocity.z", &this->sensor_data[6]);
-        state_interfaces.emplace_back(this->sensor_name, "linear_acceleration.x", &this->sensor_data[7]);
-        state_interfaces.emplace_back(this->sensor_name, "linear_acceleration.y", &this->sensor_data[8]);
-        state_interfaces.emplace_back(this->sensor_name, "linear_acceleration.z", &this->sensor_data[9]);
+        state_interfaces.emplace_back(this->sensor_name, "euler.x", &this->sensor_data[4]);
+        state_interfaces.emplace_back(this->sensor_name, "euler.y", &this->sensor_data[5]);
+        state_interfaces.emplace_back(this->sensor_name, "euler.z", &this->sensor_data[6]);
+        state_interfaces.emplace_back(this->sensor_name, "angular_velocity.x", &this->sensor_data[7]);
+        state_interfaces.emplace_back(this->sensor_name, "angular_velocity.y", &this->sensor_data[8]);
+        state_interfaces.emplace_back(this->sensor_name, "angular_velocity.z", &this->sensor_data[9]);
+        state_interfaces.emplace_back(this->sensor_name, "linear_acceleration.x", &this->sensor_data[10]);
+        state_interfaces.emplace_back(this->sensor_name, "linear_acceleration.y", &this->sensor_data[11]);
+        state_interfaces.emplace_back(this->sensor_name, "linear_acceleration.z", &this->sensor_data[12]);
 
         state_interfaces.emplace_back(this->sensor_name, "offline", &this->offline);
 
@@ -199,6 +202,11 @@ namespace gary_hardware {
             this->sensor_data[2] = (double) utils::half_to_float(z);
             auto w = (uint16_t) (frame.data[6] | frame.data[7] << 8);
             this->sensor_data[3] = (double) utils::half_to_float(w);
+
+            this->sensor_data[4] = atan2(2 * (y * z + w * x), w * w - x * x - y * y + z * z);
+            this->sensor_data[5] = asin(-2 * (x * z - w * y));
+            this->sensor_data[6] = atan2(2 * (x * y + w * z), w * w + x * x - y * y - z * z);
+
             read_succ_cnt++;
         }
         //read gyroscope
@@ -216,11 +224,11 @@ namespace gary_hardware {
         }
         if (succ) {
             auto x = (int16_t) (frame.data[0] | frame.data[1] << 8);
-            this->sensor_data[4] = (double) utils::half_to_float(x);
+            this->sensor_data[7] = (double) utils::half_to_float(x);
             auto y = (int16_t) (frame.data[2] | frame.data[3] << 8);
-            this->sensor_data[5] = (double) utils::half_to_float(y);
+            this->sensor_data[8] = (double) utils::half_to_float(y);
             auto z = (int16_t) (frame.data[4] | frame.data[5] << 8);
-            this->sensor_data[6] = (double) utils::half_to_float(z);
+            this->sensor_data[9] = (double) utils::half_to_float(z);
             read_succ_cnt++;
         }
         //read acceleration
@@ -238,11 +246,11 @@ namespace gary_hardware {
         }
         if (succ) {
             auto x = (int16_t) (frame.data[0] | frame.data[1] << 8);
-            this->sensor_data[7] = (double) utils::half_to_float(x);
+            this->sensor_data[10] = (double) utils::half_to_float(x);
             auto y = (int16_t) (frame.data[2] | frame.data[3] << 8);
-            this->sensor_data[8] = (double) utils::half_to_float(y);
+            this->sensor_data[11] = (double) utils::half_to_float(y);
             auto z = (int16_t) (frame.data[4] | frame.data[5] << 8);
-            this->sensor_data[9] = (double) utils::half_to_float(z);
+            this->sensor_data[12] = (double) utils::half_to_float(z);
             read_succ_cnt++;
         }
 
