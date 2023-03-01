@@ -194,13 +194,17 @@ namespace gary_hardware {
             }
         }
         if (succ) {
-            auto x = (uint16_t) (frame.data[0] | frame.data[1] << 8);
-            this->sensor_data[0] = (double) utils::half_to_float(x);
-            auto y = (uint16_t) (frame.data[2] | frame.data[3] << 8);
-            this->sensor_data[1] = (double) utils::half_to_float(y);
-            auto z = (uint16_t) (frame.data[4] | frame.data[5] << 8);
-            this->sensor_data[2] = (double) utils::half_to_float(z);
-            auto w = (uint16_t) (frame.data[6] | frame.data[7] << 8);
+            auto raw_x = (uint16_t) (frame.data[0] | frame.data[1] << 8);
+            auto x = (double) utils::half_to_float(raw_x);
+            this->sensor_data[0] = x;
+            auto raw_y = (uint16_t) (frame.data[2] | frame.data[3] << 8);
+            auto y = (double) utils::half_to_float(raw_y);
+            this->sensor_data[1] = y;
+            auto raw_z = (uint16_t) (frame.data[4] | frame.data[5] << 8);
+            auto z = (double) utils::half_to_float(raw_z);
+            this->sensor_data[2] = z;
+            auto raw_w = (uint16_t) (frame.data[6] | frame.data[7] << 8);
+            auto w = (double) utils::half_to_float(raw_w);
             this->sensor_data[3] = (double) utils::half_to_float(w);
 
             this->sensor_data[4] = atan2(2 * (y * z + w * x), w * w - x * x - y * y + z * z);
