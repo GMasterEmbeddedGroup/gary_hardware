@@ -194,8 +194,14 @@ bool RMMotor::feedback(const uint8_t fdb_data[8]) {
     //get velocity
     *this->feedback_data["velocity"] = static_cast<double>((_rpm)) * this->velocity_ratio;
 
+    //get rpm
+    *this->feedback_data["rpm"] = static_cast<double>(_rpm);
+
     //get effort
-    *this->feedback_data["effort"] = (double) _current * this->effort_ratio;
+    *this->feedback_data["effort"] = static_cast<double>(_current) * this->effort_ratio;
+
+    //get effort_raw
+    *this->feedback_data["effort_raw"] = static_cast<double>(_current);
 
     //get temperature
     //if the motor has temperature sensor
