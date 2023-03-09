@@ -34,7 +34,7 @@ namespace gary_hardware{
         std::shared_ptr<utils::OfflineDetector> offlineDetector;
         std::string sensor_name;
         int can_ids[3]{};
-        double sensor_data[13]{};
+        double sensor_data[16]{};
         double offline{};
     };
 }

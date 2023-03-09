@@ -113,12 +113,15 @@ namespace gary_hardware {
         state_interfaces.emplace_back(this->sensor_name, "euler.x", &this->sensor_data[4]);
         state_interfaces.emplace_back(this->sensor_name, "euler.y", &this->sensor_data[5]);
         state_interfaces.emplace_back(this->sensor_name, "euler.z", &this->sensor_data[6]);
-        state_interfaces.emplace_back(this->sensor_name, "angular_velocity.x", &this->sensor_data[7]);
-        state_interfaces.emplace_back(this->sensor_name, "angular_velocity.y", &this->sensor_data[8]);
-        state_interfaces.emplace_back(this->sensor_name, "angular_velocity.z", &this->sensor_data[9]);
-        state_interfaces.emplace_back(this->sensor_name, "linear_acceleration.x", &this->sensor_data[10]);
-        state_interfaces.emplace_back(this->sensor_name, "linear_acceleration.y", &this->sensor_data[11]);
-        state_interfaces.emplace_back(this->sensor_name, "linear_acceleration.z", &this->sensor_data[12]);
+        state_interfaces.emplace_back(this->sensor_name, "euler_sum.x", &this->sensor_data[7]);
+        state_interfaces.emplace_back(this->sensor_name, "euler_sum.y", &this->sensor_data[8]);
+        state_interfaces.emplace_back(this->sensor_name, "euler_sum.z", &this->sensor_data[9]);
+        state_interfaces.emplace_back(this->sensor_name, "angular_velocity.x", &this->sensor_data[10]);
+        state_interfaces.emplace_back(this->sensor_name, "angular_velocity.y", &this->sensor_data[11]);
+        state_interfaces.emplace_back(this->sensor_name, "angular_velocity.z", &this->sensor_data[12]);
+        state_interfaces.emplace_back(this->sensor_name, "linear_acceleration.x", &this->sensor_data[13]);
+        state_interfaces.emplace_back(this->sensor_name, "linear_acceleration.y", &this->sensor_data[14]);
+        state_interfaces.emplace_back(this->sensor_name, "linear_acceleration.z", &this->sensor_data[15]);
 
         state_interfaces.emplace_back(this->sensor_name, "offline", &this->offline);
 
@@ -194,22 +197,30 @@ namespace gary_hardware {
             }
         }
         if (succ) {
-            auto raw_x = (uint16_t) (frame.data[0] | frame.data[1] << 8);
-            auto x = (double) utils::half_to_float(raw_x);
-            this->sensor_data[0] = x;
-            auto raw_y = (uint16_t) (frame.data[2] | frame.data[3] << 8);
-            auto y = (double) utils::half_to_float(raw_y);
-            this->sensor_data[1] = y;
-            auto raw_z = (uint16_t) (frame.data[4] | frame.data[5] << 8);
-            auto z = (double) utils::half_to_float(raw_z);
-            this->sensor_data[2] = z;
-            auto raw_w = (uint16_t) (frame.data[6] | frame.data[7] << 8);
-            auto w = (double) utils::half_to_float(raw_w);
-            this->sensor_data[3] = (double) utils::half_to_float(w);
+            auto raw_orien_x = (uint16_t) (frame.data[0] | frame.data[1] << 8);
+            auto orien_x = (double) utils::half_to_float(raw_orien_x);
+            this->sensor_data[0] = orien_x;
+            auto raw_orien_y = (uint16_t) (frame.data[2] | frame.data[3] << 8);
+            auto orien_y = (double) utils::half_to_float(raw_orien_y);
+            this->sensor_data[1] = orien_y;
+            auto raw_orien_z = (uint16_t) (frame.data[4] | frame.data[5] << 8);
+            auto orien_z = (double) utils::half_to_float(raw_orien_z);
+            this->sensor_data[2] = orien_z;
+            auto raw_orien_w = (uint16_t) (frame.data[6] | frame.data[7] << 8);
+            auto orien_w = (double) utils::half_to_float(raw_orien_w);
+            this->sensor_data[3] = orien_w;
 
-            this->sensor_data[4] = atan2(2 * (y * z + w * x), w * w - x * x - y * y + z * z);
-            this->sensor_data[5] = asin(-2 * (x * z - w * y));
-            this->sensor_data[6] = atan2(2 * (x * y + w * z), w * w + x * x - y * y - z * z);
+            double tmp_x = this->sensor_data[4];
+            double tmp_y = this->sensor_data[5];
+            double tmp_z = this->sensor_data[6];
+
+            this->sensor_data[4] = atan2(2 * (orien_y * orien_z + orien_w * orien_x), orien_w * orien_w - orien_x * orien_x - orien_y * orien_y + orien_z * orien_z);
+            this->sensor_data[5] = asin(-2 * (orien_x * orien_z - orien_w * orien_y));
+            this->sensor_data[6] = atan2(2 * (orien_x * orien_y + orien_w * orien_z), orien_w * orien_w + orien_x * orien_x - orien_y * orien_y - orien_z * orien_z);
+
+            this->sensor_data[7] += this->sensor_data[4] - tmp_x;
+            this->sensor_data[8] += this->sensor_data[5] - tmp_y;
+            this->sensor_data[9] += this->sensor_data[6] - tmp_z;
 
             read_succ_cnt++;
         }
@@ -227,12 +238,12 @@ namespace gary_hardware {
             }
         }
         if (succ) {
-            auto x = (int16_t) (frame.data[0] | frame.data[1] << 8);
-            this->sensor_data[7] = (double) utils::half_to_float(x);
-            auto y = (int16_t) (frame.data[2] | frame.data[3] << 8);
-            this->sensor_data[8] = (double) utils::half_to_float(y);
-            auto z = (int16_t) (frame.data[4] | frame.data[5] << 8);
-            this->sensor_data[9] = (double) utils::half_to_float(z);
+            auto raw_gyro_x = (int16_t) (frame.data[0] | frame.data[1] << 8);
+            this->sensor_data[10] = (double) utils::half_to_float(raw_gyro_x);
+            auto raw_gyro_y = (int16_t) (frame.data[2] | frame.data[3] << 8);
+            this->sensor_data[11] = (double) utils::half_to_float(raw_gyro_y);
+            auto raw_gyro_z = (int16_t) (frame.data[4] | frame.data[5] << 8);
+            this->sensor_data[12] = (double) utils::half_to_float(raw_gyro_z);
             read_succ_cnt++;
         }
         //read acceleration
@@ -249,12 +260,12 @@ namespace gary_hardware {
             }
         }
         if (succ) {
-            auto x = (int16_t) (frame.data[0] | frame.data[1] << 8);
-            this->sensor_data[10] = (double) utils::half_to_float(x);
-            auto y = (int16_t) (frame.data[2] | frame.data[3] << 8);
-            this->sensor_data[11] = (double) utils::half_to_float(y);
-            auto z = (int16_t) (frame.data[4] | frame.data[5] << 8);
-            this->sensor_data[12] = (double) utils::half_to_float(z);
+            auto raw_accel_x = (int16_t) (frame.data[0] | frame.data[1] << 8);
+            this->sensor_data[13] = (double) utils::half_to_float(raw_accel_x);
+            auto raw_accel_y = (int16_t) (frame.data[2] | frame.data[3] << 8);
+            this->sensor_data[14] = (double) utils::half_to_float(raw_accel_y);
+            auto raw_accel_z = (int16_t) (frame.data[4] | frame.data[5] << 8);
+            this->sensor_data[15] = (double) utils::half_to_float(raw_accel_z);
             read_succ_cnt++;
         }
 
