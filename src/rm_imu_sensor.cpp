@@ -163,7 +163,7 @@ namespace gary_hardware {
         if (this->offlineDetector->offline) {
             rclcpp::Clock clock;
             RCLCPP_ERROR_THROTTLE(rclcpp::get_logger(this->sensor_name), clock, 1000, "[%s] offline",
-                                 this->sensor_name.c_str());
+                                  this->sensor_name.c_str());
         }
 
         //check if socket is down
@@ -218,9 +218,20 @@ namespace gary_hardware {
             this->sensor_data[5] = asin(-2 * (orien_x * orien_z - orien_w * orien_y));
             this->sensor_data[6] = atan2(2 * (orien_x * orien_y + orien_w * orien_z), orien_w * orien_w + orien_x * orien_x - orien_y * orien_y - orien_z * orien_z);
 
-            this->sensor_data[7] += this->sensor_data[4] - tmp_x;
-            this->sensor_data[8] += this->sensor_data[5] - tmp_y;
-            this->sensor_data[9] += this->sensor_data[6] - tmp_z;
+            double euler_x_sum = this->sensor_data[4] - tmp_x;
+            if (euler_x_sum > M_PI) euler_x_sum -= M_PI * 2;
+            if (euler_x_sum < -M_PI) euler_x_sum += M_PI * 2;
+            this->sensor_data[7] += euler_x_sum;
+
+            double euler_y_sum = this->sensor_data[5] - tmp_y;
+            if (euler_y_sum > M_PI) euler_y_sum -= M_PI * 2;
+            if (euler_y_sum < -M_PI) euler_y_sum += M_PI * 2;
+            this->sensor_data[8] += euler_y_sum;
+
+            double euler_z_sum = this->sensor_data[6] - tmp_z;
+            if (euler_z_sum > M_PI) euler_z_sum -= M_PI * 2;
+            if (euler_z_sum < -M_PI) euler_z_sum += M_PI * 2;
+            this->sensor_data[9] += euler_z_sum;
 
             read_succ_cnt++;
         }
