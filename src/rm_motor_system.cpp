@@ -111,7 +111,7 @@ namespace gary_hardware {
 
             //bind feedback can id
             if (!this->can_receiver->open_socket(new_motor->feedback_id)) {
-                RCLCPP_ERROR(rclcpp::get_logger(this->system_name), "[%s] failed to bind can id 0x%x to bus",
+                RCLCPP_DEBUG(rclcpp::get_logger(this->system_name), "[%s] failed to bind can id 0x%x to bus",
                              this->can_receiver->ifname.c_str(), new_motor->feedback_id);
             }
 
@@ -125,7 +125,7 @@ namespace gary_hardware {
 
         //open can sender
         if (!this->can_sender->open_socket()) {
-            RCLCPP_ERROR(rclcpp::get_logger(this->system_name), "[%s] failed to open can sender socket",
+            RCLCPP_DEBUG(rclcpp::get_logger(this->system_name), "[%s] failed to open can sender socket",
                          this->can_sender->ifname.c_str());
         }
 
@@ -211,11 +211,12 @@ namespace gary_hardware {
         for (const auto &i: this->motors) {
 
             //update offline status
-            *i.offline = i.offlineDetector->offline;
             if (i.offlineDetector->offline) {
-                rclcpp::Clock clock;
-                RCLCPP_ERROR_THROTTLE(rclcpp::get_logger(this->system_name), clock, 1000, "[%s] offline",
-                                     i.motor_name.c_str());
+                if(*i.offline == 0) RCLCPP_ERROR(rclcpp::get_logger(this->system_name), "[%s] motor offline", i.motor_name.c_str());
+                *i.offline = 1;
+            } else {
+                if(*i.offline == 1) RCLCPP_ERROR(rclcpp::get_logger(this->system_name), "[%s] motor online", i.motor_name.c_str());
+                *i.offline = 0;
             }
 
             //check if socket is down
@@ -223,8 +224,7 @@ namespace gary_hardware {
                 //reopen socket
                 if (!this->can_receiver->open_socket(i.motor->feedback_id)) {
                     //reopen failed
-                    rclcpp::Clock clock;
-                    RCLCPP_WARN_THROTTLE(rclcpp::get_logger(this->system_name), clock, 1000,
+                    RCLCPP_DEBUG(rclcpp::get_logger(this->system_name),
                                          "[%s] can receiver reopen failed, id 0x%x",
                                          this->can_receiver->ifname.c_str(), i.motor->feedback_id);
                     i.offlineDetector->update(false);
@@ -279,8 +279,7 @@ namespace gary_hardware {
         if (!this->can_sender->is_opened) {
             //reopen socket
             if (!this->can_sender->open_socket()) {
-                rclcpp::Clock clock;
-                RCLCPP_WARN_THROTTLE(rclcpp::get_logger(this->system_name), clock, 1000,
+                RCLCPP_DEBUG(rclcpp::get_logger(this->system_name),
                                      "[%s] can sender reopen failed",
                                      this->can_sender->ifname.c_str());
                 return hardware_interface::return_type::ERROR;
@@ -324,8 +323,7 @@ namespace gary_hardware {
                          this->can_sender->ifname.c_str(), this->cmd_id);
             return hardware_interface::return_type::OK;
         } else {
-            rclcpp::Clock clock;
-            RCLCPP_WARN_THROTTLE(rclcpp::get_logger(this->system_name), clock, 1000,
+            RCLCPP_DEBUG(rclcpp::get_logger(this->system_name),
                                  "[%s] can send failed, cmd: 0x%x",
                                  this->can_sender->ifname.c_str(), this->cmd_id);
         }
