@@ -188,7 +188,7 @@ bool RMMotor::feedback(const uint8_t fdb_data[8]) {
     *this->feedback_data["position"] += delta * this->position_ratio;
 
     //get ecd
-    *this->feedback_data["encoder"] = static_cast<double>(_ecd) * this->position_ratio;
+    *this->feedback_data["encoder"] = static_cast<double>(_ecd) * this->position_ratio - M_PI;
 
     //get raw ecd
     *this->feedback_data["encoder_raw"] = static_cast<double>(_ecd) ;
