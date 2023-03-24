@@ -21,9 +21,9 @@ LKTechMotor::LKTechMotor(uint8_t _motor_id) {
     this->cmd_id = _motor_id + 0x140;
 
     //set motor parameters
-    this->max_ecd_original = 16383;
-    this->max_dps_original = 16383;
-    this->max_current_original = 2048;
+    this->max_ecd_original = 32767;
+    this->max_dps_original = 32767;
+    this->max_current_original = 1000;
     this->max_temperature_original = 125;
     gear_ratio = 1.0f;
     torque_constant = 1.4f;

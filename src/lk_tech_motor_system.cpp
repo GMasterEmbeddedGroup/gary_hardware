@@ -204,8 +204,8 @@ namespace gary_hardware {
                 if (!this->can_receiver->open_socket(i.motor->feedback_id)) {
                     //reopen failed
                     RCLCPP_DEBUG(rclcpp::get_logger(this->system_name),
-                                         "[%s] can receiver reopen failed, id 0x%x",
-                                         this->can_receiver->ifname.c_str(), i.motor->feedback_id);
+                                 "[%s] can receiver reopen failed, id 0x%x",
+                                 this->can_receiver->ifname.c_str(), i.motor->feedback_id);
                     i.offlineDetector->update(false);
                     continue;
                 }
@@ -219,8 +219,13 @@ namespace gary_hardware {
             while (true) {
                 struct can_frame can_recv_frame_temp{};
                 if (this->can_receiver->read(i.motor->feedback_id, &can_recv_frame_temp)) {
-                    can_recv_frame = can_recv_frame_temp;
-                    succ |= true;
+                    //skip send packet
+                    if (can_recv_frame_temp.data[1] == 0 && can_recv_frame_temp.data[2] == 0 && can_recv_frame_temp.data[3] == 0) {
+                        succ |= false;
+                    } else {
+                        can_recv_frame = can_recv_frame_temp;
+                        succ |= true;
+                    }
                 } else {
                     succ |= false;
                     break;
@@ -259,8 +264,8 @@ namespace gary_hardware {
             //reopen socket
             if (!this->can_sender->open_socket()) {
                 RCLCPP_DEBUG(rclcpp::get_logger(this->system_name),
-                                     "[%s] can sender reopen failed",
-                                     this->can_sender->ifname.c_str());
+                             "[%s] can sender reopen failed",
+                             this->can_sender->ifname.c_str());
                 return hardware_interface::return_type::ERROR;
             }
         }
@@ -284,12 +289,12 @@ namespace gary_hardware {
             }
 
             //fill the cmd in a can frame
-            frame.data[0] = 0xa1;
+            frame.data[0] = 0xa0;
             frame.data[1] = 0x00;
             frame.data[2] = 0x00;
             frame.data[3] = 0x00;
-            frame.data[4] = motor_cmd[0];
-            frame.data[5] = motor_cmd[1];
+            frame.data[4] = motor_cmd[1];
+            frame.data[5] = motor_cmd[0];
             frame.data[6] = 0x00;
             frame.data[7] = 0x00;
 
