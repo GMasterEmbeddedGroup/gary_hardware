@@ -16,4 +16,12 @@
         </description>
     </class>
 
+    <class name="gary_hardware/LKTechMotorSystem"
+           type="gary_hardware::LKTechMotorSystem"
+           base_class_type="hardware_interface::SystemInterface">
+        <description>
+            LK Tech Motor system
+        </description>
+    </class>
+
 </library>

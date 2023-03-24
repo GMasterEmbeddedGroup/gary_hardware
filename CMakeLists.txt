@@ -32,7 +32,10 @@ add_library(${PROJECT_NAME} SHARED
         src/utils/fp16_convert.cpp
         src/utils/offline_detector.cpp
         src/rm_motor_system.cpp
-        src/utils/rm_motors.cpp)
+        src/utils/rm_motors.cpp
+        src/lk_tech_motor_system.cpp
+        src/utils/lk_tech_motors.cpp
+        )
 
 target_include_directories(${PROJECT_NAME} PRIVATE include)
 
