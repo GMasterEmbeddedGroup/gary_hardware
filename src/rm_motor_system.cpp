@@ -280,7 +280,10 @@ namespace gary_hardware {
 
         //reset position
         for (const auto &i: this->motors) {
-            if (*i.reset_position == 1.0f) i.motor->reset_position();
+            if (*i.reset_position == 1.0f)  {
+                i.motor->reset_position();
+                *i.reset_position = 0.0f;
+            }
         }
 
 

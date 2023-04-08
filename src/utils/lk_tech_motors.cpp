@@ -122,3 +122,7 @@ bool LKTechMotor::feedback(const uint8_t fdb_data[8]) {
 
     return true;
 }
+
+void LKTechMotor::reset_position() {
+    *this->feedback_data["position"] = 0.0f;
+}

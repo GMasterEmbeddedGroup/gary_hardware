@@ -87,6 +87,7 @@ namespace gary_hardware {
             motor_ctrl.motor_name = motor_name;
             motor_ctrl.offlineDetector = std::make_shared<utils::OfflineDetector>(threshold);
             motor_ctrl.offline = std::make_shared<double>(0);
+            motor_ctrl.reset_position = std::make_shared<double>(0);
 
             //bind feedback can id
             if (!this->can_receiver->open_socket(new_motor->feedback_id)) {
@@ -144,8 +145,10 @@ namespace gary_hardware {
             auto motor_name = i.motor_name;
             auto cmd = i.cmd.get();
             auto cmd_raw = i.cmd_raw.get();
+            auto reset_position = i.reset_position.get();
             command_interfaces.emplace_back(motor_name, "effort", cmd);
             command_interfaces.emplace_back(motor_name, "raw", cmd_raw);
+            command_interfaces.emplace_back(motor_name, "reset_position", reset_position);
         }
 
         return command_interfaces;
@@ -258,6 +261,15 @@ namespace gary_hardware {
     hardware_interface::return_type LKTechMotorSystem::write() {
 
         RCLCPP_DEBUG(rclcpp::get_logger(this->system_name), "writing");
+
+        //reset position
+        for (const auto &i: this->motors) {
+            if (*i.reset_position == 1.0f)  {
+                i.motor->reset_position();
+                *i.reset_position = 0.0f;
+            }
+        }
+        
 
         //check if socket is down
         if (!this->can_sender->is_opened) {

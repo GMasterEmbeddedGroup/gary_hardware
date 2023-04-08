@@ -13,6 +13,7 @@ public:
 
     bool cmd(double effort_set);
     bool feedback(const uint8_t fdb_data[8]);
+    void reset_position();
 
     uint8_t motor_id;
     uint16_t cmd_id;
