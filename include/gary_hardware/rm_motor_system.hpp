@@ -21,6 +21,7 @@ namespace gary_hardware{
         std::shared_ptr<double> cmd;
         std::shared_ptr<double> cmd_raw;
         std::shared_ptr<double> offline;
+        std::shared_ptr<double> reset_position;
     }rm_motor_ctrl_t;
 
 
