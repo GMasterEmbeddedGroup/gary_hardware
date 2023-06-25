@@ -10,6 +10,7 @@
 namespace gary_hardware {
 
     hardware_interface::return_type RMIMUSensor::configure(const hardware_interface::HardwareInfo &info) {
+        use_corrected_angle = false;
 
         //get sensor name
         this->sensor_name = info.name;
@@ -54,6 +55,12 @@ namespace gary_hardware {
         this->can_ids[1] = std::stoi(info.hardware_parameters.at("gyro_can_id"), nullptr, 16);
         RCLCPP_DEBUG(rclcpp::get_logger(this->sensor_name), "using gyroscope can id 0x%x", this->can_ids[1]);
 
+        //check parameter "corrected_angle_can_id"
+        if (info.hardware_parameters.count("corrected_angle_can_id") == 1) {
+            this->can_ids[1] = std::stoi(info.hardware_parameters.at("corrected_angle_can_id"), nullptr, 16);
+            RCLCPP_DEBUG(rclcpp::get_logger(this->sensor_name), "using corrected_angle can id 0x%x", this->can_ids[3]);
+            use_corrected_angle = true;
+        }
 
         //check parameter "accel_can_id"
         if (info.hardware_parameters.count("accel_can_id") != 1) {
@@ -218,12 +225,17 @@ namespace gary_hardware {
             double tmp_y = this->sensor_data[5];
             double tmp_z = this->sensor_data[6];
 
-            this->sensor_data[4] = atan2(2 * (orien_y * orien_z + orien_w * orien_x),
-                                         orien_w * orien_w - orien_x * orien_x - orien_y * orien_y + orien_z * orien_z);
-            this->sensor_data[5] = asin(-2 * (orien_x * orien_z - orien_w * orien_y));
-            this->sensor_data[6] = atan2(2 * (orien_x * orien_y + orien_w * orien_z),
-                                         orien_w * orien_w + orien_x * orien_x - orien_y * orien_y - orien_z * orien_z);
-
+            if(!use_corrected_angle) {
+                this->sensor_data[4] = atan2(2 * (orien_y * orien_z + orien_w * orien_x),
+                                             orien_w * orien_w - orien_x * orien_x - orien_y * orien_y +
+                                             orien_z * orien_z);
+                this->sensor_data[5] = asin(-2 * (orien_x * orien_z - orien_w * orien_y));
+                this->sensor_data[6] = atan2(2 * (orien_x * orien_y + orien_w * orien_z),
+                                             orien_w * orien_w + orien_x * orien_x - orien_y * orien_y -
+                                             orien_z * orien_z);
+            }else{
+                //do nothing
+            }
             double euler_x_sum = this->sensor_data[4] - tmp_x;
             if (euler_x_sum > M_PI) euler_x_sum -= M_PI * 2;
             if (euler_x_sum < -M_PI) euler_x_sum += M_PI * 2;
@@ -284,6 +296,30 @@ namespace gary_hardware {
             auto raw_accel_z = (int16_t) (frame.data[4] | frame.data[5] << 8);
             this->sensor_data[15] = (double) utils::half_to_float(raw_accel_z);
             read_succ_cnt++;
+        }
+
+
+        if(use_corrected_angle){
+            succ = false;
+            while (true) {
+                struct can_frame can_recv_frame_temp{};
+                if (this->can_receiver->read(this->can_ids[3], &can_recv_frame_temp)) {
+                    frame = can_recv_frame_temp;
+                    succ |= true;
+                } else {
+                    succ |= false;
+                    break;
+                }
+            }
+            if (succ) {
+                auto raw_euler_x = (int16_t) (frame.data[0] | frame.data[1] << 8);
+                this->sensor_data[4] = (double) utils::half_to_float(raw_euler_x);
+                auto raw_euler_y = (int16_t) (frame.data[2] | frame.data[3] << 8);
+                this->sensor_data[5] = (double) utils::half_to_float(raw_euler_y);
+                auto raw_euler_z = (int16_t) (frame.data[4] | frame.data[5] << 8);
+                this->sensor_data[6] = (double) utils::half_to_float(raw_euler_z);
+                read_succ_cnt++;
+            }
         }
 
         //update offline status

@@ -33,8 +33,9 @@ namespace gary_hardware{
         std::shared_ptr<driver::can::SocketCANReceiver> can_receiver;
         std::shared_ptr<utils::OfflineDetector> offlineDetector;
         std::string sensor_name;
-        int can_ids[3]{};
+        int can_ids[4]{};
         double sensor_data[16]{};
         double offline{};
+        bool use_corrected_angle;
     };
 }
