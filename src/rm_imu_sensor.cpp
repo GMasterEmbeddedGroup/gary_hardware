@@ -192,10 +192,15 @@ namespace gary_hardware {
             }
         }
 
+        typedef union{
+            float f_out;
+            uint8_t u8_in[4];
+        } uint2fp32;
+
         struct can_frame frame{};
         int read_succ_cnt = 0;
         bool succ = false;
-        //read orientation
+        //read gyro
         //get the latest data, read until socket buffer is empty
         while (true) {
             struct can_frame can_recv_frame_temp{};
@@ -208,52 +213,34 @@ namespace gary_hardware {
             }
         }
         if (succ) {
-            auto raw_orien_x = (uint16_t) (frame.data[0] | frame.data[1] << 8);
-            auto orien_x = (double) utils::half_to_float(raw_orien_x);
-            this->sensor_data[0] = orien_x;
-            auto raw_orien_y = (uint16_t) (frame.data[2] | frame.data[3] << 8);
-            auto orien_y = (double) utils::half_to_float(raw_orien_y);
-            this->sensor_data[1] = orien_y;
-            auto raw_orien_z = (uint16_t) (frame.data[4] | frame.data[5] << 8);
-            auto orien_z = (double) utils::half_to_float(raw_orien_z);
-            this->sensor_data[2] = orien_z;
-            auto raw_orien_w = (uint16_t) (frame.data[6] | frame.data[7] << 8);
-            auto orien_w = (double) utils::half_to_float(raw_orien_w);
-            this->sensor_data[3] = orien_w;
+            this->sensor_data[0] = 0.0;
+            this->sensor_data[1] = 0.0;
+            this->sensor_data[2] = 0.0;
+            this->sensor_data[3] = 0.0;
 
-            double tmp_x = this->sensor_data[4];
-            double tmp_y = this->sensor_data[5];
-            double tmp_z = this->sensor_data[6];
+            uint2fp32 temp;
+            temp.u8_in[0] = frame.data[0];
+            temp.u8_in[1] = frame.data[1];
+            temp.u8_in[2] = frame.data[2];
+            temp.u8_in[3] = frame.data[3];
+            this->sensor_data[12] = static_cast<double>(temp.f_out);
 
-            if(!use_corrected_angle) {
-                this->sensor_data[4] = atan2(2 * (orien_y * orien_z + orien_w * orien_x),
-                                             orien_w * orien_w - orien_x * orien_x - orien_y * orien_y +
-                                             orien_z * orien_z);
-                this->sensor_data[5] = asin(-2 * (orien_x * orien_z - orien_w * orien_y));
-                this->sensor_data[6] = atan2(2 * (orien_x * orien_y + orien_w * orien_z),
-                                             orien_w * orien_w + orien_x * orien_x - orien_y * orien_y -
-                                             orien_z * orien_z);
-            }else{
-                //do nothing
-            }
-            double euler_x_sum = this->sensor_data[4] - tmp_x;
-            if (euler_x_sum > M_PI) euler_x_sum -= M_PI * 2;
-            if (euler_x_sum < -M_PI) euler_x_sum += M_PI * 2;
-            this->sensor_data[7] += euler_x_sum;
+            temp.u8_in[0] = frame.data[4];
+            temp.u8_in[1] = frame.data[5];
+            temp.u8_in[2] = frame.data[6];
+            temp.u8_in[3] = frame.data[7];
+            this->sensor_data[10] = static_cast<double>(temp.f_out);
 
-            double euler_y_sum = this->sensor_data[5] - tmp_y;
-            if (euler_y_sum > M_PI) euler_y_sum -= M_PI * 2;
-            if (euler_y_sum < -M_PI) euler_y_sum += M_PI * 2;
-            this->sensor_data[8] += euler_y_sum;
-
-            double euler_z_sum = this->sensor_data[6] - tmp_z;
-            if (euler_z_sum > M_PI) euler_z_sum -= M_PI * 2;
-            if (euler_z_sum < -M_PI) euler_z_sum += M_PI * 2;
-            this->sensor_data[9] += euler_z_sum;
+//            auto raw_gyro_x = (int16_t) (frame.data[0] | frame.data[1] << 8);
+//            this->sensor_data[10] = (double) utils::half_to_float(raw_gyro_x);
+//            auto raw_gyro_y = (int16_t) (frame.data[2] | frame.data[3] << 8);
+            this->sensor_data[11] = 0.0;
+//            auto raw_gyro_z = (int16_t) (frame.data[4] | frame.data[5] << 8);
+//            this->sensor_data[12] = (double) utils::half_to_float(raw_gyro_z);
 
             read_succ_cnt++;
         }
-        //read gyroscope
+        //read euler
         //get the latest data, read until socket buffer is empty
         succ = false;
         while (true) {
@@ -267,12 +254,38 @@ namespace gary_hardware {
             }
         }
         if (succ) {
-            auto raw_gyro_x = (int16_t) (frame.data[0] | frame.data[1] << 8);
-            this->sensor_data[10] = (double) utils::half_to_float(raw_gyro_x);
-            auto raw_gyro_y = (int16_t) (frame.data[2] | frame.data[3] << 8);
-            this->sensor_data[11] = (double) utils::half_to_float(raw_gyro_y);
-            auto raw_gyro_z = (int16_t) (frame.data[4] | frame.data[5] << 8);
-            this->sensor_data[12] = (double) utils::half_to_float(raw_gyro_z);
+            double tmp_x = this->sensor_data[4];
+//            double tmp_y = this->sensor_data[5];
+            double tmp_z = this->sensor_data[6];
+
+            uint2fp32 temp;
+            temp.u8_in[0] = frame.data[0];
+            temp.u8_in[1] = frame.data[1];
+            temp.u8_in[2] = frame.data[2];
+            temp.u8_in[3] = frame.data[3];
+            this->sensor_data[4] = static_cast<double>(temp.f_out);
+
+            temp.u8_in[0] = frame.data[4];
+            temp.u8_in[1] = frame.data[5];
+            temp.u8_in[2] = frame.data[6];
+            temp.u8_in[3] = frame.data[7];
+            this->sensor_data[6] = static_cast<double>(temp.f_out);
+
+            double euler_x_sum = this->sensor_data[4] - tmp_x;
+            if (euler_x_sum > M_PI) euler_x_sum -= M_PI * 2;
+            if (euler_x_sum < -M_PI) euler_x_sum += M_PI * 2;
+            this->sensor_data[7] += euler_x_sum;
+
+//            double euler_y_sum = this->sensor_data[5] - tmp_y;
+//            if (euler_y_sum > M_PI) euler_y_sum -= M_PI * 2;
+//            if (euler_y_sum < -M_PI) euler_y_sum += M_PI * 2;
+//            this->sensor_data[8] += euler_y_sum;
+
+            double euler_z_sum = this->sensor_data[6] - tmp_z;
+            if (euler_z_sum > M_PI) euler_z_sum -= M_PI * 2;
+            if (euler_z_sum < -M_PI) euler_z_sum += M_PI * 2;
+            this->sensor_data[9] += euler_z_sum;
+
             read_succ_cnt++;
         }
         //read acceleration
@@ -299,28 +312,28 @@ namespace gary_hardware {
         }
 
 
-        if(use_corrected_angle){
-            succ = false;
-            while (true) {
-                struct can_frame can_recv_frame_temp{};
-                if (this->can_receiver->read(this->can_ids[3], &can_recv_frame_temp)) {
-                    frame = can_recv_frame_temp;
-                    succ |= true;
-                } else {
-                    succ |= false;
-                    break;
-                }
-            }
-            if (succ) {
-                auto raw_euler_x = (int16_t) (frame.data[0] | frame.data[1] << 8);
-                this->sensor_data[4] = (double) utils::half_to_float(raw_euler_x);
-                auto raw_euler_y = (int16_t) (frame.data[2] | frame.data[3] << 8);
-                this->sensor_data[5] = (double) utils::half_to_float(raw_euler_y);
-                auto raw_euler_z = (int16_t) (frame.data[4] | frame.data[5] << 8);
-                this->sensor_data[6] = (double) utils::half_to_float(raw_euler_z);
-                read_succ_cnt++;
-            }
-        }
+//        if(use_corrected_angle){
+//            succ = false;
+//            while (true) {
+//                struct can_frame can_recv_frame_temp{};
+//                if (this->can_receiver->read(this->can_ids[3], &can_recv_frame_temp)) {
+//                    frame = can_recv_frame_temp;
+//                    succ |= true;
+//                } else {
+//                    succ |= false;
+//                    break;
+//                }
+//            }
+//            if (succ) {
+//                auto raw_euler_x = (int16_t) (frame.data[0] | frame.data[1] << 8);
+//                this->sensor_data[4] = (double) utils::half_to_float(raw_euler_x);
+//                auto raw_euler_y = (int16_t) (frame.data[2] | frame.data[3] << 8);
+//                this->sensor_data[5] = (double) utils::half_to_float(raw_euler_y);
+//                auto raw_euler_z = (int16_t) (frame.data[4] | frame.data[5] << 8);
+//                this->sensor_data[6] = (double) utils::half_to_float(raw_euler_z);
+//                read_succ_cnt++;
+//            }
+//        }
 
         //update offline status
         this->offlineDetector->update(read_succ_cnt > 0);
