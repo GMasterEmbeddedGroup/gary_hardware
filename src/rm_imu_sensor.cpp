@@ -55,21 +55,21 @@ namespace gary_hardware {
         this->can_ids[1] = std::stoi(info.hardware_parameters.at("gyro_can_id"), nullptr, 16);
         RCLCPP_DEBUG(rclcpp::get_logger(this->sensor_name), "using gyroscope can id 0x%x", this->can_ids[1]);
 
-        //check parameter "corrected_angle_can_id"
-        if (info.hardware_parameters.count("corrected_angle_can_id") == 1) {
-            this->can_ids[1] = std::stoi(info.hardware_parameters.at("corrected_angle_can_id"), nullptr, 16);
-            RCLCPP_DEBUG(rclcpp::get_logger(this->sensor_name), "using corrected_angle can id 0x%x", this->can_ids[3]);
-            use_corrected_angle = true;
-        }
-
-        //check parameter "accel_can_id"
-        if (info.hardware_parameters.count("accel_can_id") != 1) {
-            RCLCPP_ERROR(rclcpp::get_logger(this->sensor_name), "invalid acceleration can id definition in urdf");
-            this->status_ = hardware_interface::status::UNKNOWN;
-            return hardware_interface::return_type::ERROR;
-        }
-        this->can_ids[2] = std::stoi(info.hardware_parameters.at("accel_can_id"), nullptr, 16);
-        RCLCPP_DEBUG(rclcpp::get_logger(this->sensor_name), "using acceleration can id 0x%x", this->can_ids[2]);
+//        //check parameter "corrected_angle_can_id"
+//        if (info.hardware_parameters.count("corrected_angle_can_id") == 1) {
+//            this->can_ids[1] = std::stoi(info.hardware_parameters.at("corrected_angle_can_id"), nullptr, 16);
+//            RCLCPP_DEBUG(rclcpp::get_logger(this->sensor_name), "using corrected_angle can id 0x%x", this->can_ids[3]);
+//            use_corrected_angle = true;
+//        }
+//
+//        //check parameter "accel_can_id"
+//        if (info.hardware_parameters.count("accel_can_id") != 1) {
+//            RCLCPP_ERROR(rclcpp::get_logger(this->sensor_name), "invalid acceleration can id definition in urdf");
+//            this->status_ = hardware_interface::status::UNKNOWN;
+//            return hardware_interface::return_type::ERROR;
+//        }
+//        this->can_ids[2] = std::stoi(info.hardware_parameters.at("accel_can_id"), nullptr, 16);
+//        RCLCPP_DEBUG(rclcpp::get_logger(this->sensor_name), "using acceleration can id 0x%x", this->can_ids[2]);
 
 
         //check parameter "update_rate"
@@ -113,10 +113,10 @@ namespace gary_hardware {
         //creat state interfaces
         std::vector<hardware_interface::StateInterface> state_interfaces;
 
-        state_interfaces.emplace_back(this->sensor_name, "orientation.x", &this->sensor_data[0]);
-        state_interfaces.emplace_back(this->sensor_name, "orientation.y", &this->sensor_data[1]);
-        state_interfaces.emplace_back(this->sensor_name, "orientation.z", &this->sensor_data[2]);
-        state_interfaces.emplace_back(this->sensor_name, "orientation.w", &this->sensor_data[3]);
+//        state_interfaces.emplace_back(this->sensor_name, "orientation.x", &this->sensor_data[0]);
+//        state_interfaces.emplace_back(this->sensor_name, "orientation.y", &this->sensor_data[1]);
+//        state_interfaces.emplace_back(this->sensor_name, "orientation.z", &this->sensor_data[2]);
+//        state_interfaces.emplace_back(this->sensor_name, "orientation.w", &this->sensor_data[3]);
         state_interfaces.emplace_back(this->sensor_name, "euler.x", &this->sensor_data[4]);
         state_interfaces.emplace_back(this->sensor_name, "euler.y", &this->sensor_data[5]);
         state_interfaces.emplace_back(this->sensor_name, "euler.z", &this->sensor_data[6]);
@@ -126,9 +126,9 @@ namespace gary_hardware {
         state_interfaces.emplace_back(this->sensor_name, "angular_velocity.x", &this->sensor_data[10]);
         state_interfaces.emplace_back(this->sensor_name, "angular_velocity.y", &this->sensor_data[11]);
         state_interfaces.emplace_back(this->sensor_name, "angular_velocity.z", &this->sensor_data[12]);
-        state_interfaces.emplace_back(this->sensor_name, "linear_acceleration.x", &this->sensor_data[13]);
-        state_interfaces.emplace_back(this->sensor_name, "linear_acceleration.y", &this->sensor_data[14]);
-        state_interfaces.emplace_back(this->sensor_name, "linear_acceleration.z", &this->sensor_data[15]);
+//        state_interfaces.emplace_back(this->sensor_name, "linear_acceleration.x", &this->sensor_data[13]);
+//        state_interfaces.emplace_back(this->sensor_name, "linear_acceleration.y", &this->sensor_data[14]);
+//        state_interfaces.emplace_back(this->sensor_name, "linear_acceleration.z", &this->sensor_data[15]);
 
         state_interfaces.emplace_back(this->sensor_name, "offline", &this->offline);
 
@@ -179,7 +179,7 @@ namespace gary_hardware {
         }
 
         //check if socket is down
-        for (int can_id: this->can_ids) {
+        for (int can_id: {0x101,0x102}) {
             if (!this->can_receiver->is_opened[can_id]) {
                 //reopen socket
                 if (!this->can_receiver->open_socket(can_id)) {
