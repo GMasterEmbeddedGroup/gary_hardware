@@ -231,6 +231,10 @@ namespace gary_hardware {
             temp.u8_in[3] = frame.data[7];
             this->sensor_data[10] = static_cast<double>(temp.f_out);
 
+            RCLCPP_INFO(rclcpp::get_logger(this->sensor_name),
+                         "0x101 received yaw:%lf, pitch:%lf",sensor_data[12],sensor_data[10]
+                         );
+
 //            auto raw_gyro_x = (int16_t) (frame.data[0] | frame.data[1] << 8);
 //            this->sensor_data[10] = (double) utils::half_to_float(raw_gyro_x);
 //            auto raw_gyro_y = (int16_t) (frame.data[2] | frame.data[3] << 8);
@@ -271,6 +275,10 @@ namespace gary_hardware {
             temp.u8_in[3] = frame.data[7];
             this->sensor_data[6] = static_cast<double>(temp.f_out);
 
+            RCLCPP_INFO(rclcpp::get_logger(this->sensor_name),
+                        "0x102 received yaw:%lf, pitch:%lf",sensor_data[12],sensor_data[10]
+            );
+
             double euler_x_sum = this->sensor_data[4] - tmp_x;
             if (euler_x_sum > M_PI) euler_x_sum -= M_PI * 2;
             if (euler_x_sum < -M_PI) euler_x_sum += M_PI * 2;
@@ -290,26 +298,26 @@ namespace gary_hardware {
         }
         //read acceleration
         //get the latest data, read until socket buffer is empty
-        succ = false;
-        while (true) {
-            struct can_frame can_recv_frame_temp{};
-            if (this->can_receiver->read(this->can_ids[2], &can_recv_frame_temp)) {
-                frame = can_recv_frame_temp;
-                succ |= true;
-            } else {
-                succ |= false;
-                break;
-            }
-        }
-        if (succ) {
-            auto raw_accel_x = (int16_t) (frame.data[0] | frame.data[1] << 8);
-            this->sensor_data[13] = (double) utils::half_to_float(raw_accel_x);
-            auto raw_accel_y = (int16_t) (frame.data[2] | frame.data[3] << 8);
-            this->sensor_data[14] = (double) utils::half_to_float(raw_accel_y);
-            auto raw_accel_z = (int16_t) (frame.data[4] | frame.data[5] << 8);
-            this->sensor_data[15] = (double) utils::half_to_float(raw_accel_z);
-            read_succ_cnt++;
-        }
+//        succ = false;
+//        while (true) {
+//            struct can_frame can_recv_frame_temp{};
+//            if (this->can_receiver->read(this->can_ids[2], &can_recv_frame_temp)) {
+//                frame = can_recv_frame_temp;
+//                succ |= true;
+//            } else {
+//                succ |= false;
+//                break;
+//            }
+//        }
+//        if (succ) {
+//            auto raw_accel_x = (int16_t) (frame.data[0] | frame.data[1] << 8);
+//            this->sensor_data[13] = (double) utils::half_to_float(raw_accel_x);
+//            auto raw_accel_y = (int16_t) (frame.data[2] | frame.data[3] << 8);
+//            this->sensor_data[14] = (double) utils::half_to_float(raw_accel_y);
+//            auto raw_accel_z = (int16_t) (frame.data[4] | frame.data[5] << 8);
+//            this->sensor_data[15] = (double) utils::half_to_float(raw_accel_z);
+//            read_succ_cnt++;
+//        }
 
 
 //        if(use_corrected_angle){
