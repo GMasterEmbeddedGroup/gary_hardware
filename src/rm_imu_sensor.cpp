@@ -240,9 +240,9 @@ namespace gary_hardware {
                 this->sensor_data[1] = static_cast<double>(Qy);
                 this->sensor_data[2] = static_cast<double>(Qz);
                 this->sensor_data[3] = static_cast<double>(Qw);
-                this->sensor_data[4] = static_cast<double>(Roll);
-                this->sensor_data[5] = static_cast<double>(Pitch);
-                this->sensor_data[6] = static_cast<double>(Heading);
+                this->sensor_data[4] = 0.0 - static_cast<double>(Roll);
+                this->sensor_data[5] = 0.0 - static_cast<double>(Pitch);
+                this->sensor_data[6] = 0.0 - static_cast<double>(Heading);
 
                 double euler_x_sum = this->sensor_data[4] - tmp_x;
                 if (euler_x_sum > M_PI) euler_x_sum -= M_PI * 2;
@@ -260,9 +260,9 @@ namespace gary_hardware {
                 this->sensor_data[9] += euler_z_sum;
 
 
-                this->sensor_data[10] = static_cast<double>(RollSpeed);
-                this->sensor_data[11] = static_cast<double>(PitchSpeed);
-                this->sensor_data[12] = static_cast<double>(HeadingSpeed);
+                this->sensor_data[10] = -static_cast<double>(RollSpeed);
+                this->sensor_data[11] = -static_cast<double>(PitchSpeed);
+                this->sensor_data[12] = -static_cast<double>(HeadingSpeed);
 
             }
 
