@@ -36,6 +36,11 @@ namespace gary_hardware{
         int can_ids[4]{};
         double sensor_data[16]{};
         double offline{};
-        bool use_corrected_angle;
+        uint16_t Count_can{};
+        uint8_t last_num{};
+        const uint8_t TYPE_AHRS = 0x41;
+        const uint8_t AHRS_LEN = 0x30;
+        const uint8_t AHRS_CAN = 6;
+        uint8_t ahrs_u8array[6][8]{};
     };
 }

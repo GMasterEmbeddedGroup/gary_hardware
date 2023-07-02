@@ -10,7 +10,6 @@
 namespace gary_hardware {
 
     hardware_interface::return_type RMIMUSensor::configure(const hardware_interface::HardwareInfo &info) {
-        use_corrected_angle = false;
 
         //get sensor name
         this->sensor_name = info.name;
@@ -36,40 +35,15 @@ namespace gary_hardware {
         this->can_receiver = std::make_shared<driver::can::SocketCANReceiver>(bus_name);
 
 
-        //check parameter "orientation_can_id"
-        if (info.hardware_parameters.count("orientation_can_id") != 1) {
-            RCLCPP_ERROR(rclcpp::get_logger(this->sensor_name), "invalid orientation can id definition in urdf");
+        //check parameter "imu_can_id"
+        if (info.hardware_parameters.count("imu_can_id") != 1) {
+            RCLCPP_ERROR(rclcpp::get_logger(this->sensor_name), "invalid imu can id definition in urdf");
             this->status_ = hardware_interface::status::UNKNOWN;
             return hardware_interface::return_type::ERROR;
         }
-        this->can_ids[0] = std::stoi(info.hardware_parameters.at("orientation_can_id"), nullptr, 16);
-        RCLCPP_DEBUG(rclcpp::get_logger(this->sensor_name), "using orientation can id 0x%x", this->can_ids[0]);
+        this->can_ids[0] = std::stoi(info.hardware_parameters.at("imu_can_id"), nullptr, 16);
+        RCLCPP_DEBUG(rclcpp::get_logger(this->sensor_name), "using imu can id 0x%x", this->can_ids[0]);
 
-
-        //check parameter "gyro_can_id"
-        if (info.hardware_parameters.count("gyro_can_id") != 1) {
-            RCLCPP_ERROR(rclcpp::get_logger(this->sensor_name), "invalid gyroscope can id definition in urdf");
-            this->status_ = hardware_interface::status::UNKNOWN;
-            return hardware_interface::return_type::ERROR;
-        }
-        this->can_ids[1] = std::stoi(info.hardware_parameters.at("gyro_can_id"), nullptr, 16);
-        RCLCPP_DEBUG(rclcpp::get_logger(this->sensor_name), "using gyroscope can id 0x%x", this->can_ids[1]);
-
-//        //check parameter "corrected_angle_can_id"
-//        if (info.hardware_parameters.count("corrected_angle_can_id") == 1) {
-//            this->can_ids[1] = std::stoi(info.hardware_parameters.at("corrected_angle_can_id"), nullptr, 16);
-//            RCLCPP_DEBUG(rclcpp::get_logger(this->sensor_name), "using corrected_angle can id 0x%x", this->can_ids[3]);
-//            use_corrected_angle = true;
-//        }
-//
-//        //check parameter "accel_can_id"
-//        if (info.hardware_parameters.count("accel_can_id") != 1) {
-//            RCLCPP_ERROR(rclcpp::get_logger(this->sensor_name), "invalid acceleration can id definition in urdf");
-//            this->status_ = hardware_interface::status::UNKNOWN;
-//            return hardware_interface::return_type::ERROR;
-//        }
-//        this->can_ids[2] = std::stoi(info.hardware_parameters.at("accel_can_id"), nullptr, 16);
-//        RCLCPP_DEBUG(rclcpp::get_logger(this->sensor_name), "using acceleration can id 0x%x", this->can_ids[2]);
 
 
         //check parameter "update_rate"
@@ -90,11 +64,6 @@ namespace gary_hardware {
         this->offlineDetector = std::make_shared<utils::OfflineDetector>(threshold);
 
 
-        RCLCPP_INFO(rclcpp::get_logger(this->sensor_name),
-                    "add new imu, name: %s, can bus: %s, orientation id: 0x%x, gyro id: 0x%x, accel id: 0x%x,",
-                    this->sensor_name.c_str(), bus_name.c_str(), this->can_ids[0], this->can_ids[1], this->can_ids[2]);
-
-
         //bind can id
         for (int can_id: this->can_ids) {
             if (!this->can_receiver->open_socket(can_id)) {
@@ -113,10 +82,10 @@ namespace gary_hardware {
         //creat state interfaces
         std::vector<hardware_interface::StateInterface> state_interfaces;
 
-//        state_interfaces.emplace_back(this->sensor_name, "orientation.x", &this->sensor_data[0]);
-//        state_interfaces.emplace_back(this->sensor_name, "orientation.y", &this->sensor_data[1]);
-//        state_interfaces.emplace_back(this->sensor_name, "orientation.z", &this->sensor_data[2]);
-//        state_interfaces.emplace_back(this->sensor_name, "orientation.w", &this->sensor_data[3]);
+        state_interfaces.emplace_back(this->sensor_name, "orientation.x", &this->sensor_data[0]);
+        state_interfaces.emplace_back(this->sensor_name, "orientation.y", &this->sensor_data[1]);
+        state_interfaces.emplace_back(this->sensor_name, "orientation.z", &this->sensor_data[2]);
+        state_interfaces.emplace_back(this->sensor_name, "orientation.w", &this->sensor_data[3]);
         state_interfaces.emplace_back(this->sensor_name, "euler.x", &this->sensor_data[4]);
         state_interfaces.emplace_back(this->sensor_name, "euler.y", &this->sensor_data[5]);
         state_interfaces.emplace_back(this->sensor_name, "euler.z", &this->sensor_data[6]);
@@ -179,7 +148,7 @@ namespace gary_hardware {
         }
 
         //check if socket is down
-        for (int can_id: {0x101,0x102}) {
+        for (int can_id: {0x000}) {
             if (!this->can_receiver->is_opened[can_id]) {
                 //reopen socket
                 if (!this->can_receiver->open_socket(can_id)) {
@@ -192,156 +161,116 @@ namespace gary_hardware {
             }
         }
 
-        typedef union{
-            float f_out;
-            uint8_t u8_in[4];
-        } uint2fp32;
-
         struct can_frame frame{};
         int read_succ_cnt = 0;
-        bool succ = false;
-        //read gyro
+        static bool succ = false;
+        static bool acc_flag = false;
+        //read imu
         //get the latest data, read until socket buffer is empty
-        while (true) {
-            struct can_frame can_recv_frame_temp{};
-            if (this->can_receiver->read(this->can_ids[0], &can_recv_frame_temp)) {
-                frame = can_recv_frame_temp;
-                succ |= true;
-            } else {
-                succ |= false;
-                break;
-            }
+        struct can_frame can_recv_frame_temp{};
+        if (this->can_receiver->read(this->can_ids[0], &can_recv_frame_temp)) {
+            frame = can_recv_frame_temp;
+            succ |= true;
+        } else {
+            succ |= false;
         }
         if (succ) {
-            this->sensor_data[0] = 0.0;
-            this->sensor_data[1] = 0.0;
-            this->sensor_data[2] = 0.0;
-            this->sensor_data[3] = 0.0;
+            if(frame.data[0]==0xFC && last_num==0xFD) {
+                Count_can=1;
+                if((frame.data[1]==TYPE_AHRS)&&(frame.data[2]==AHRS_LEN)) acc_flag = true;
+            }
+            last_num=frame.data[7];
 
-            uint2fp32 temp;
-            temp.u8_in[0] = frame.data[0];
-            temp.u8_in[1] = frame.data[1];
-            temp.u8_in[2] = frame.data[2];
-            temp.u8_in[3] = frame.data[3];
-            this->sensor_data[12] = static_cast<double>(temp.f_out);
+            if(Count_can)
+            {
+                for(int i=0;i<8;i++)
+                {
+                    ahrs_u8array[Count_can-1][i]=frame.data[i];
+                }
+                Count_can += 1;
+            }
 
-            temp.u8_in[0] = frame.data[4];
-            temp.u8_in[1] = frame.data[5];
-            temp.u8_in[2] = frame.data[6];
-            temp.u8_in[3] = frame.data[7];
-            this->sensor_data[10] = static_cast<double>(temp.f_out);
 
-            RCLCPP_INFO(rclcpp::get_logger(this->sensor_name),
-                         "0x101 received yaw:%lf, pitch:%lf",sensor_data[12],sensor_data[10]
-                         );
+            if(acc_flag==1 && Count_can==AHRS_CAN)
+            {
+                Count_can=0;
+                acc_flag = false;
+                std::vector<uint8_t> rx_ahrs;
+                rx_ahrs.clear();
+                for(int k=0;k<(AHRS_CAN-1);k++)
+                {
+                    for(int i=0;i<8;i++)
+                    {
+                        rx_ahrs.emplace_back(ahrs_u8array[k][i]);
+                    }
+                }
+                
+                auto DATA_Trans = 
+                        [this](uint8_t v1,uint8_t v2,uint8_t v3,uint8_t v4) -> float {
+                            typedef union{
+                                float f_out;
+                                uint8_t u8_in[4];
+                            } uint2fp32;
+                            uint2fp32 transfer;
+                            transfer.u8_in[0] = v1;
+                            transfer.u8_in[1] = v2;
+                            transfer.u8_in[2] = v3;
+                            transfer.u8_in[3] = v4;
+                            return transfer.f_out;
+                };
+                
+                float RollSpeed=DATA_Trans(rx_ahrs[7],rx_ahrs[8],rx_ahrs[9],rx_ahrs[10]);     
+                float PitchSpeed=DATA_Trans(rx_ahrs[11],rx_ahrs[12],rx_ahrs[13],rx_ahrs[14]); 
+                float HeadingSpeed=DATA_Trans(rx_ahrs[15],rx_ahrs[16],rx_ahrs[17],rx_ahrs[18]);
 
-//            auto raw_gyro_x = (int16_t) (frame.data[0] | frame.data[1] << 8);
-//            this->sensor_data[10] = (double) utils::half_to_float(raw_gyro_x);
-//            auto raw_gyro_y = (int16_t) (frame.data[2] | frame.data[3] << 8);
-            this->sensor_data[11] = 0.0;
-//            auto raw_gyro_z = (int16_t) (frame.data[4] | frame.data[5] << 8);
-//            this->sensor_data[12] = (double) utils::half_to_float(raw_gyro_z);
+                float Roll=DATA_Trans(rx_ahrs[19],rx_ahrs[20],rx_ahrs[21],rx_ahrs[22]);   
+                float Pitch=DATA_Trans(rx_ahrs[23],rx_ahrs[24],rx_ahrs[25],rx_ahrs[26]);   
+                float Heading=DATA_Trans(rx_ahrs[27],rx_ahrs[28],rx_ahrs[29],rx_ahrs[30]);	
+
+                float Qw=DATA_Trans(rx_ahrs[31],rx_ahrs[32],rx_ahrs[33],rx_ahrs[34]);  
+                float Qx=DATA_Trans(rx_ahrs[35],rx_ahrs[36],rx_ahrs[37],rx_ahrs[38]);
+                float Qy=DATA_Trans(rx_ahrs[39],rx_ahrs[40],rx_ahrs[41],rx_ahrs[42]);
+                float Qz=DATA_Trans(rx_ahrs[43],rx_ahrs[44],rx_ahrs[45],rx_ahrs[46]);
+
+                double tmp_x = this->sensor_data[4];
+                double tmp_y = this->sensor_data[5];
+                double tmp_z = this->sensor_data[6];
+
+                this->sensor_data[0] = static_cast<double>(Qx);
+                this->sensor_data[1] = static_cast<double>(Qy);
+                this->sensor_data[2] = static_cast<double>(Qz);
+                this->sensor_data[3] = static_cast<double>(Qw);
+                this->sensor_data[4] = static_cast<double>(Pitch);
+                this->sensor_data[5] = static_cast<double>(Roll);
+                this->sensor_data[6] = static_cast<double>(Heading);
+
+                double euler_x_sum = this->sensor_data[4] - tmp_x;
+                if (euler_x_sum > M_PI) euler_x_sum -= M_PI * 2;
+                if (euler_x_sum < -M_PI) euler_x_sum += M_PI * 2;
+                this->sensor_data[7] += euler_x_sum;
+
+                double euler_y_sum = this->sensor_data[5] - tmp_y;
+                if (euler_y_sum > M_PI) euler_y_sum -= M_PI * 2;
+                if (euler_y_sum < -M_PI) euler_y_sum += M_PI * 2;
+                this->sensor_data[8] += euler_y_sum;
+
+                double euler_z_sum = this->sensor_data[6] - tmp_z;
+                if (euler_z_sum > M_PI) euler_z_sum -= M_PI * 2;
+                if (euler_z_sum < -M_PI) euler_z_sum += M_PI * 2;
+                this->sensor_data[9] += euler_z_sum;
+
+
+                this->sensor_data[10] = static_cast<double>(PitchSpeed);
+                this->sensor_data[11] = static_cast<double>(RollSpeed);
+                this->sensor_data[12] = static_cast<double>(HeadingSpeed);
+
+            }
 
             read_succ_cnt++;
-        }
-        //read euler
-        //get the latest data, read until socket buffer is empty
-        succ = false;
-        while (true) {
-            struct can_frame can_recv_frame_temp{};
-            if (this->can_receiver->read(this->can_ids[1], &can_recv_frame_temp)) {
-                frame = can_recv_frame_temp;
-                succ |= true;
-            } else {
-                succ |= false;
-                break;
+            if(last_num==0xFD){
+                succ = false;
             }
         }
-        if (succ) {
-            double tmp_x = this->sensor_data[4];
-//            double tmp_y = this->sensor_data[5];
-            double tmp_z = this->sensor_data[6];
-
-            uint2fp32 temp;
-            temp.u8_in[0] = frame.data[0];
-            temp.u8_in[1] = frame.data[1];
-            temp.u8_in[2] = frame.data[2];
-            temp.u8_in[3] = frame.data[3];
-            this->sensor_data[4] = static_cast<double>(temp.f_out);
-
-            temp.u8_in[0] = frame.data[4];
-            temp.u8_in[1] = frame.data[5];
-            temp.u8_in[2] = frame.data[6];
-            temp.u8_in[3] = frame.data[7];
-            this->sensor_data[6] = static_cast<double>(temp.f_out);
-
-            RCLCPP_INFO(rclcpp::get_logger(this->sensor_name),
-                        "0x102 received yaw:%lf, pitch:%lf",sensor_data[12],sensor_data[10]
-            );
-
-            double euler_x_sum = this->sensor_data[4] - tmp_x;
-            if (euler_x_sum > M_PI) euler_x_sum -= M_PI * 2;
-            if (euler_x_sum < -M_PI) euler_x_sum += M_PI * 2;
-            this->sensor_data[7] += euler_x_sum;
-
-//            double euler_y_sum = this->sensor_data[5] - tmp_y;
-//            if (euler_y_sum > M_PI) euler_y_sum -= M_PI * 2;
-//            if (euler_y_sum < -M_PI) euler_y_sum += M_PI * 2;
-//            this->sensor_data[8] += euler_y_sum;
-
-            double euler_z_sum = this->sensor_data[6] - tmp_z;
-            if (euler_z_sum > M_PI) euler_z_sum -= M_PI * 2;
-            if (euler_z_sum < -M_PI) euler_z_sum += M_PI * 2;
-            this->sensor_data[9] += euler_z_sum;
-
-            read_succ_cnt++;
-        }
-        //read acceleration
-        //get the latest data, read until socket buffer is empty
-//        succ = false;
-//        while (true) {
-//            struct can_frame can_recv_frame_temp{};
-//            if (this->can_receiver->read(this->can_ids[2], &can_recv_frame_temp)) {
-//                frame = can_recv_frame_temp;
-//                succ |= true;
-//            } else {
-//                succ |= false;
-//                break;
-//            }
-//        }
-//        if (succ) {
-//            auto raw_accel_x = (int16_t) (frame.data[0] | frame.data[1] << 8);
-//            this->sensor_data[13] = (double) utils::half_to_float(raw_accel_x);
-//            auto raw_accel_y = (int16_t) (frame.data[2] | frame.data[3] << 8);
-//            this->sensor_data[14] = (double) utils::half_to_float(raw_accel_y);
-//            auto raw_accel_z = (int16_t) (frame.data[4] | frame.data[5] << 8);
-//            this->sensor_data[15] = (double) utils::half_to_float(raw_accel_z);
-//            read_succ_cnt++;
-//        }
-
-
-//        if(use_corrected_angle){
-//            succ = false;
-//            while (true) {
-//                struct can_frame can_recv_frame_temp{};
-//                if (this->can_receiver->read(this->can_ids[3], &can_recv_frame_temp)) {
-//                    frame = can_recv_frame_temp;
-//                    succ |= true;
-//                } else {
-//                    succ |= false;
-//                    break;
-//                }
-//            }
-//            if (succ) {
-//                auto raw_euler_x = (int16_t) (frame.data[0] | frame.data[1] << 8);
-//                this->sensor_data[4] = (double) utils::half_to_float(raw_euler_x);
-//                auto raw_euler_y = (int16_t) (frame.data[2] | frame.data[3] << 8);
-//                this->sensor_data[5] = (double) utils::half_to_float(raw_euler_y);
-//                auto raw_euler_z = (int16_t) (frame.data[4] | frame.data[5] << 8);
-//                this->sensor_data[6] = (double) utils::half_to_float(raw_euler_z);
-//                read_succ_cnt++;
-//            }
-//        }
 
         //update offline status
         this->offlineDetector->update(read_succ_cnt > 0);
