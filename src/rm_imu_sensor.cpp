@@ -95,9 +95,9 @@ namespace gary_hardware {
         state_interfaces.emplace_back(this->sensor_name, "angular_velocity.x", &this->sensor_data[10]);
         state_interfaces.emplace_back(this->sensor_name, "angular_velocity.y", &this->sensor_data[11]);
         state_interfaces.emplace_back(this->sensor_name, "angular_velocity.z", &this->sensor_data[12]);
-//        state_interfaces.emplace_back(this->sensor_name, "linear_acceleration.x", &this->sensor_data[13]);
-//        state_interfaces.emplace_back(this->sensor_name, "linear_acceleration.y", &this->sensor_data[14]);
-//        state_interfaces.emplace_back(this->sensor_name, "linear_acceleration.z", &this->sensor_data[15]);
+        state_interfaces.emplace_back(this->sensor_name, "linear_acceleration.x", &this->sensor_data[13]);
+        state_interfaces.emplace_back(this->sensor_name, "linear_acceleration.y", &this->sensor_data[14]);
+        state_interfaces.emplace_back(this->sensor_name, "linear_acceleration.z", &this->sensor_data[15]);
 
         state_interfaces.emplace_back(this->sensor_name, "offline", &this->offline);
 
@@ -260,6 +260,10 @@ namespace gary_hardware {
                     this->sensor_data[10] = -static_cast<double>(RollSpeed);
                     this->sensor_data[11] = -static_cast<double>(PitchSpeed);
                     this->sensor_data[12] = -static_cast<double>(HeadingSpeed);
+
+                    this->sensor_data[13] = 0.0;
+                    this->sensor_data[14] = 0.0;
+                    this->sensor_data[15] = 0.0;
 
                 }
 
