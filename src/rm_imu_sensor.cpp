@@ -168,109 +168,106 @@ namespace gary_hardware {
         //read imu
         //get the latest data, read until socket buffer is empty
         struct can_frame can_recv_frame_temp{};
-        if (this->can_receiver->read(this->can_ids[0], &can_recv_frame_temp)) {
+        while (this->can_receiver->read(this->can_ids[0], &can_recv_frame_temp)) {
             frame = can_recv_frame_temp;
             succ |= true;
-        } else {
-            succ |= false;
-        }
-        if (succ) {
-            if(frame.data[0]==0xFC && last_num==0xFD) {
-                Count_can=1;
-                if((frame.data[1]==TYPE_AHRS)&&(frame.data[2]==AHRS_LEN)) acc_flag = true;
-            }
-            last_num=frame.data[7];
-
-            if(Count_can)
-            {
-                for(int i=0;i<8;i++)
-                {
-                    ahrs_u8array[Count_can-1][i]=frame.data[i];
+            if (succ) {
+                if(frame.data[0]==0xFC && last_num==0xFD) {
+                    Count_can=1;
+                    if((frame.data[1]==TYPE_AHRS)&&(frame.data[2]==AHRS_LEN)) acc_flag = true;
                 }
-                Count_can += 1;
-            }
+                last_num=frame.data[7];
 
-
-            if(acc_flag==1 && Count_can==AHRS_CAN)
-            {
-                Count_can=0;
-                acc_flag = false;
-                std::vector<uint8_t> rx_ahrs;
-                rx_ahrs.clear();
-                for(int k=0;k<(AHRS_CAN-1);k++)
+                if(Count_can)
                 {
                     for(int i=0;i<8;i++)
                     {
-                        rx_ahrs.emplace_back(ahrs_u8array[k][i]);
+                        ahrs_u8array[Count_can-1][i]=frame.data[i];
                     }
+                    Count_can += 1;
                 }
-                
-                auto DATA_Trans = 
-                        [this](uint8_t v1,uint8_t v2,uint8_t v3,uint8_t v4) -> float {
-                            typedef union{
-                                float f_out;
-                                uint8_t u8_in[4];
-                            } uint2fp32;
-                            uint2fp32 transfer;
-                            transfer.u8_in[0] = v1;
-                            transfer.u8_in[1] = v2;
-                            transfer.u8_in[2] = v3;
-                            transfer.u8_in[3] = v4;
-                            return transfer.f_out;
-                };
-                
-                float RollSpeed=DATA_Trans(rx_ahrs[7],rx_ahrs[8],rx_ahrs[9],rx_ahrs[10]);     
-                float PitchSpeed=DATA_Trans(rx_ahrs[11],rx_ahrs[12],rx_ahrs[13],rx_ahrs[14]); 
-                float HeadingSpeed=DATA_Trans(rx_ahrs[15],rx_ahrs[16],rx_ahrs[17],rx_ahrs[18]);
-
-                float Roll=DATA_Trans(rx_ahrs[19],rx_ahrs[20],rx_ahrs[21],rx_ahrs[22]);   
-                float Pitch=DATA_Trans(rx_ahrs[23],rx_ahrs[24],rx_ahrs[25],rx_ahrs[26]);   
-                float Heading=DATA_Trans(rx_ahrs[27],rx_ahrs[28],rx_ahrs[29],rx_ahrs[30]);	
-
-                float Qw=DATA_Trans(rx_ahrs[31],rx_ahrs[32],rx_ahrs[33],rx_ahrs[34]);  
-                float Qx=DATA_Trans(rx_ahrs[35],rx_ahrs[36],rx_ahrs[37],rx_ahrs[38]);
-                float Qy=DATA_Trans(rx_ahrs[39],rx_ahrs[40],rx_ahrs[41],rx_ahrs[42]);
-                float Qz=DATA_Trans(rx_ahrs[43],rx_ahrs[44],rx_ahrs[45],rx_ahrs[46]);
-
-                double tmp_x = this->sensor_data[4];
-                double tmp_y = this->sensor_data[5];
-                double tmp_z = this->sensor_data[6];
-
-                this->sensor_data[0] = static_cast<double>(Qx);
-                this->sensor_data[1] = static_cast<double>(Qy);
-                this->sensor_data[2] = static_cast<double>(Qz);
-                this->sensor_data[3] = static_cast<double>(Qw);
-                this->sensor_data[4] = 0.0 - static_cast<double>(Roll);
-                this->sensor_data[5] = 0.0 - static_cast<double>(Pitch);
-                this->sensor_data[6] = 0.0 - static_cast<double>(Heading);
-
-                double euler_x_sum = this->sensor_data[4] - tmp_x;
-                if (euler_x_sum > M_PI) euler_x_sum -= M_PI * 2;
-                if (euler_x_sum < -M_PI) euler_x_sum += M_PI * 2;
-                this->sensor_data[7] += euler_x_sum;
-
-                double euler_y_sum = this->sensor_data[5] - tmp_y;
-                if (euler_y_sum > M_PI) euler_y_sum -= M_PI * 2;
-                if (euler_y_sum < -M_PI) euler_y_sum += M_PI * 2;
-                this->sensor_data[8] += euler_y_sum;
-
-                double euler_z_sum = this->sensor_data[6] - tmp_z;
-                if (euler_z_sum > M_PI) euler_z_sum -= M_PI * 2;
-                if (euler_z_sum < -M_PI) euler_z_sum += M_PI * 2;
-                this->sensor_data[9] += euler_z_sum;
 
 
-                this->sensor_data[10] = -static_cast<double>(RollSpeed);
-                this->sensor_data[11] = -static_cast<double>(PitchSpeed);
-                this->sensor_data[12] = -static_cast<double>(HeadingSpeed);
+                if(acc_flag==1 && Count_can==AHRS_CAN)
+                {
+                    Count_can=0;
+                    acc_flag = false;
+                    std::vector<uint8_t> rx_ahrs;
+                    rx_ahrs.clear();
+                    for(int k=0;k<(AHRS_CAN-1);k++)
+                    {
+                        for(int i=0;i<8;i++)
+                        {
+                            rx_ahrs.emplace_back(ahrs_u8array[k][i]);
+                        }
+                    }
 
-            }
+                    auto DATA_Trans =
+                            [this](uint8_t v1,uint8_t v2,uint8_t v3,uint8_t v4) -> float {
+                                typedef union{
+                                    float f_out;
+                                    uint8_t u8_in[4];
+                                } uint2fp32;
+                                uint2fp32 transfer;
+                                transfer.u8_in[0] = v1;
+                                transfer.u8_in[1] = v2;
+                                transfer.u8_in[2] = v3;
+                                transfer.u8_in[3] = v4;
+                                return transfer.f_out;
+                            };
 
-            read_succ_cnt++;
-            if(last_num==0xFD){
+                    float RollSpeed=DATA_Trans(rx_ahrs[7],rx_ahrs[8],rx_ahrs[9],rx_ahrs[10]);
+                    float PitchSpeed=DATA_Trans(rx_ahrs[11],rx_ahrs[12],rx_ahrs[13],rx_ahrs[14]);
+                    float HeadingSpeed=DATA_Trans(rx_ahrs[15],rx_ahrs[16],rx_ahrs[17],rx_ahrs[18]);
+
+                    float Roll=DATA_Trans(rx_ahrs[19],rx_ahrs[20],rx_ahrs[21],rx_ahrs[22]);
+                    float Pitch=DATA_Trans(rx_ahrs[23],rx_ahrs[24],rx_ahrs[25],rx_ahrs[26]);
+                    float Heading=DATA_Trans(rx_ahrs[27],rx_ahrs[28],rx_ahrs[29],rx_ahrs[30]);
+
+                    float Qw=DATA_Trans(rx_ahrs[31],rx_ahrs[32],rx_ahrs[33],rx_ahrs[34]);
+                    float Qx=DATA_Trans(rx_ahrs[35],rx_ahrs[36],rx_ahrs[37],rx_ahrs[38]);
+                    float Qy=DATA_Trans(rx_ahrs[39],rx_ahrs[40],rx_ahrs[41],rx_ahrs[42]);
+                    float Qz=DATA_Trans(rx_ahrs[43],rx_ahrs[44],rx_ahrs[45],rx_ahrs[46]);
+
+                    double tmp_x = this->sensor_data[4];
+                    double tmp_y = this->sensor_data[5];
+                    double tmp_z = this->sensor_data[6];
+
+                    this->sensor_data[0] = static_cast<double>(Qx);
+                    this->sensor_data[1] = static_cast<double>(Qy);
+                    this->sensor_data[2] = static_cast<double>(Qz);
+                    this->sensor_data[3] = static_cast<double>(Qw);
+                    this->sensor_data[4] = 0.0 - static_cast<double>(Roll);
+                    this->sensor_data[5] = 0.0 - static_cast<double>(Pitch);
+                    this->sensor_data[6] = 0.0 - static_cast<double>(Heading);
+
+                    double euler_x_sum = this->sensor_data[4] - tmp_x;
+                    if (euler_x_sum > M_PI) euler_x_sum -= M_PI * 2;
+                    if (euler_x_sum < -M_PI) euler_x_sum += M_PI * 2;
+                    this->sensor_data[7] += euler_x_sum;
+
+                    double euler_y_sum = this->sensor_data[5] - tmp_y;
+                    if (euler_y_sum > M_PI) euler_y_sum -= M_PI * 2;
+                    if (euler_y_sum < -M_PI) euler_y_sum += M_PI * 2;
+                    this->sensor_data[8] += euler_y_sum;
+
+                    double euler_z_sum = this->sensor_data[6] - tmp_z;
+                    if (euler_z_sum > M_PI) euler_z_sum -= M_PI * 2;
+                    if (euler_z_sum < -M_PI) euler_z_sum += M_PI * 2;
+                    this->sensor_data[9] += euler_z_sum;
+
+
+                    this->sensor_data[10] = -static_cast<double>(RollSpeed);
+                    this->sensor_data[11] = -static_cast<double>(PitchSpeed);
+                    this->sensor_data[12] = -static_cast<double>(HeadingSpeed);
+
+                }
+
+                read_succ_cnt++;
                 succ = false;
             }
         }
+
 
         //update offline status
         this->offlineDetector->update(read_succ_cnt > 0);
