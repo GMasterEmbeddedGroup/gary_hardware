@@ -5,6 +5,7 @@
 #include <string>
 #include <memory>
 #include <vector>
+#include <cmath>
 
 
 namespace gary_hardware {
@@ -224,10 +225,14 @@ namespace gary_hardware {
                     float Pitch=DATA_Trans(rx_ahrs[23],rx_ahrs[24],rx_ahrs[25],rx_ahrs[26]);
                     float Heading=DATA_Trans(rx_ahrs[27],rx_ahrs[28],rx_ahrs[29],rx_ahrs[30]);
 
-                    float Qw=DATA_Trans(rx_ahrs[31],rx_ahrs[32],rx_ahrs[33],rx_ahrs[34]);
-                    float Qx=DATA_Trans(rx_ahrs[35],rx_ahrs[36],rx_ahrs[37],rx_ahrs[38]);
-                    float Qy=DATA_Trans(rx_ahrs[39],rx_ahrs[40],rx_ahrs[41],rx_ahrs[42]);
-                    float Qz=DATA_Trans(rx_ahrs[43],rx_ahrs[44],rx_ahrs[45],rx_ahrs[46]);
+                    float Qw=std::cos(Roll / 2.0) * std::cos(Pitch / 2.0) * std::cos(Heading / 2.0)
+                            + std::sin(Roll / 2.0) * std::sin(Pitch / 2.0) * std::sin(Heading / 2.0);
+                    float Qx=std::sin(Roll / 2.0) * std::cos(Pitch / 2.0) * std::cos(Heading / 2.0)
+                            - std::cos(Roll / 2.0) * std::sin(Pitch / 2.0) * std::sin(Heading / 2.0);
+                    float Qy=std::cos(Roll / 2.0) * std::sin(Pitch / 2.0) * std::cos(Heading / 2.0)
+                            + std::sin(Roll / 2.0) * std::cos(Pitch / 2.0) * std::sin(Heading / 2.0);
+                    float Qz=std::cos(Roll / 2.0) * std::cos(Pitch / 2.0) * std::sin(Heading / 2.0)
+                            - std::sin(Roll / 2.0) * std::sin(Pitch / 2.0) * std::cos(Heading / 2.0);
 
                     double tmp_x = this->sensor_data[4];
                     double tmp_y = this->sensor_data[5];
