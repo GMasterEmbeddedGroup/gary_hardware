@@ -9,7 +9,7 @@
 
 namespace gary_hardware {
 
-    hardware_interface::return_type RMIMUSensor::configure(const hardware_interface::HardwareInfo &info) {
+    rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn RMIMUSensor::on_init(const hardware_interface::HardwareInfo &info) {
         use_corrected_angle = false;
 
         //get sensor name
@@ -18,16 +18,15 @@ namespace gary_hardware {
         RCLCPP_DEBUG(rclcpp::get_logger(this->sensor_name), "configuring");
 
         //call the base class initializer
-        if (configure_default(info) != hardware_interface::return_type::OK) {
-            this->status_ = hardware_interface::status::UNKNOWN;
-            return hardware_interface::return_type::ERROR;
+        if (hardware_interface::SensorInterface::on_init(info) != CallbackReturn::SUCCESS)
+        {
+            return CallbackReturn::ERROR;
         }
-
         //check parameter "can_bus"
         if (info.hardware_parameters.count("can_bus") != 1) {
             RCLCPP_ERROR(rclcpp::get_logger(this->sensor_name), "invalid can bus definition in urdf");
-            this->status_ = hardware_interface::status::UNKNOWN;
-            return hardware_interface::return_type::ERROR;
+           // this->status_ = hardware_interface::status::UNKNOWN;
+            return CallbackReturn::ERROR;
         }
         std::string bus_name = info.hardware_parameters.at("can_bus");
         RCLCPP_DEBUG(rclcpp::get_logger(this->sensor_name), "using can bus %s", bus_name.c_str());
@@ -39,8 +38,8 @@ namespace gary_hardware {
         //check parameter "orientation_can_id"
         if (info.hardware_parameters.count("orientation_can_id") != 1) {
             RCLCPP_ERROR(rclcpp::get_logger(this->sensor_name), "invalid orientation can id definition in urdf");
-            this->status_ = hardware_interface::status::UNKNOWN;
-            return hardware_interface::return_type::ERROR;
+           // this->status_ = hardware_interface::status::UNKNOWN;
+            return CallbackReturn::ERROR;
         }
         this->can_ids[0] = std::stoi(info.hardware_parameters.at("orientation_can_id"), nullptr, 16);
         RCLCPP_DEBUG(rclcpp::get_logger(this->sensor_name), "using orientation can id 0x%x", this->can_ids[0]);
@@ -49,8 +48,8 @@ namespace gary_hardware {
         //check parameter "gyro_can_id"
         if (info.hardware_parameters.count("gyro_can_id") != 1) {
             RCLCPP_ERROR(rclcpp::get_logger(this->sensor_name), "invalid gyroscope can id definition in urdf");
-            this->status_ = hardware_interface::status::UNKNOWN;
-            return hardware_interface::return_type::ERROR;
+          //  this->status_ = hardware_interface::status::UNKNOWN;
+            return CallbackReturn::ERROR;
         }
         this->can_ids[1] = std::stoi(info.hardware_parameters.at("gyro_can_id"), nullptr, 16);
         RCLCPP_DEBUG(rclcpp::get_logger(this->sensor_name), "using gyroscope can id 0x%x", this->can_ids[1]);
@@ -75,8 +74,8 @@ namespace gary_hardware {
         //check parameter "update_rate"
         if (info.hardware_parameters.count("update_rate") != 1) {
             RCLCPP_ERROR(rclcpp::get_logger(this->sensor_name), "invalid update rate definition in urdf");
-            this->status_ = hardware_interface::status::UNKNOWN;
-            return hardware_interface::return_type::ERROR;
+           // this->status_ = hardware_interface::status::UNKNOWN;
+            return CallbackReturn::ERROR;
         }
         int update_rate = std::stoi(info.hardware_parameters.at("update_rate"));
         RCLCPP_DEBUG(rclcpp::get_logger(this->sensor_name), "using update rate %d", update_rate);
@@ -103,9 +102,9 @@ namespace gary_hardware {
             }
         }
 
-        this->status_ = hardware_interface::status::CONFIGURED;
+       // this->status_ = hardware_interface::status::CONFIGURED;
         RCLCPP_INFO(rclcpp::get_logger(this->sensor_name), "configured");
-        return hardware_interface::return_type::OK;
+        return CallbackReturn::SUCCESS;
     }
 
     std::vector<hardware_interface::StateInterface> RMIMUSensor::export_state_interfaces() {
@@ -136,32 +135,32 @@ namespace gary_hardware {
     }
 
 
-    hardware_interface::return_type RMIMUSensor::start() {
+    rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn RMIMUSensor::on_activate(const rclcpp_lifecycle::State & previous_state) {
 
         RCLCPP_DEBUG(rclcpp::get_logger(this->sensor_name), "starting");
 
         //update offline detector
         this->offlineDetector->update(true);
 
-        this->status_ = hardware_interface::status::STARTED;
+       // this->status_ = hardware_interface::status::STARTED;
 
         RCLCPP_INFO(rclcpp::get_logger(this->sensor_name), "started");
 
-        return hardware_interface::return_type::OK;
+        return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
     }
 
-    hardware_interface::return_type RMIMUSensor::stop() {
+    rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn RMIMUSensor::on_deactivate(const rclcpp_lifecycle::State & previous_state) {
 
         RCLCPP_DEBUG(rclcpp::get_logger(this->sensor_name), "stopping");
 
-        this->status_ = hardware_interface::status::STOPPED;
+     //   this->status_ = hardware_interface::status::STOPPED;
 
         RCLCPP_DEBUG(rclcpp::get_logger(this->sensor_name), "stopped");
 
-        return hardware_interface::return_type::OK;
+        return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
     }
 
-    hardware_interface::return_type RMIMUSensor::read() {
+    hardware_interface::return_type RMIMUSensor::read(const rclcpp::Time & time, const rclcpp::Duration & period) {
 
         RCLCPP_DEBUG(rclcpp::get_logger(this->sensor_name), "reading");
 

@@ -7,23 +7,23 @@
 
 namespace gary_hardware {
 
-    hardware_interface::return_type RMSuperCAPSystem::configure(const hardware_interface::HardwareInfo &info) {
+    rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn RMSuperCAPSystem::on_init(const hardware_interface::HardwareInfo &info) {
         //get system name
         this->system_name = info.name;
 
         RCLCPP_DEBUG(rclcpp::get_logger(this->system_name), "configuring");
 
         //call the base class initializer
-        if (configure_default(info) != hardware_interface::return_type::OK) {
-            this->status_ = hardware_interface::status::UNKNOWN;
-            return hardware_interface::return_type::ERROR;
+        if (hardware_interface::SystemInterface::on_init(info) != CallbackReturn::SUCCESS)
+        {
+            return CallbackReturn::ERROR;
         }
 
         //check parameter "can_bus"
         if (info.hardware_parameters.count("can_bus") != 1) {
             RCLCPP_ERROR(rclcpp::get_logger(this->system_name), "invalid can bus definition in urdf");
-            this->status_ = hardware_interface::status::UNKNOWN;
-            return hardware_interface::return_type::ERROR;
+           // this->status_ = hardware_interface::status::UNKNOWN;
+            return CallbackReturn::ERROR;
         }
         std::string bus_name = info.hardware_parameters.at("can_bus");
         RCLCPP_DEBUG(rclcpp::get_logger(this->system_name), "using can bus %s", bus_name.c_str());
@@ -35,8 +35,8 @@ namespace gary_hardware {
         //check parameter "cmd_id"
         if (info.hardware_parameters.count("cmd_id") != 1) {
             RCLCPP_ERROR(rclcpp::get_logger(this->system_name), "invalid cmd id definition in urdf");
-            this->status_ = hardware_interface::status::UNKNOWN;
-            return hardware_interface::return_type::ERROR;
+           // this->status_ = hardware_interface::status::UNKNOWN;
+            return CallbackReturn::ERROR;
         }
         this->cmd_id = std::stoi(info.hardware_parameters.at("cmd_id"), nullptr, 16);
         RCLCPP_DEBUG(rclcpp::get_logger(this->system_name), "using cmd id 0x%x", this->cmd_id);
@@ -44,8 +44,8 @@ namespace gary_hardware {
         //check parameter "fdb_id"
         if (info.hardware_parameters.count("fdb_id") != 1) {
             RCLCPP_ERROR(rclcpp::get_logger(this->system_name), "invalid fdb id definition in urdf");
-            this->status_ = hardware_interface::status::UNKNOWN;
-            return hardware_interface::return_type::ERROR;
+          //  this->status_ = hardware_interface::status::UNKNOWN;
+            return CallbackReturn::ERROR;
         }
         this->fdb_id = std::stoi(info.hardware_parameters.at("fdb_id"), nullptr, 16);
         RCLCPP_DEBUG(rclcpp::get_logger(this->system_name), "using fdb id 0x%x", this->fdb_id);
@@ -74,9 +74,9 @@ namespace gary_hardware {
         if (threshold > 1.0f) threshold = 1.0f;
         this->offline_detector = std::make_shared<utils::OfflineDetector>(threshold);
 
-        this->status_ = hardware_interface::status::CONFIGURED;
+       // this->status_ = hardware_interface::status::CONFIGURED;
         RCLCPP_INFO(rclcpp::get_logger(this->system_name), "configured");
-        return hardware_interface::return_type::OK;
+        return CallbackReturn::SUCCESS;
     }
 
     std::vector<hardware_interface::StateInterface> RMSuperCAPSystem::export_state_interfaces() {
@@ -107,32 +107,32 @@ namespace gary_hardware {
         return command_interfaces;
     }
 
-    hardware_interface::return_type RMSuperCAPSystem::start() {
+    rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn RMSuperCAPSystem::on_activate(const rclcpp_lifecycle::State & previous_state) {
 
         RCLCPP_DEBUG(rclcpp::get_logger(this->system_name), "starting");
 
         //update offline detector
         this->offline_detector->update(true);
 
-        this->status_ = hardware_interface::status::STARTED;
+       // this->status_ = hardware_interface::status::STARTED;
 
         RCLCPP_INFO(rclcpp::get_logger(this->system_name), "started");
 
-        return hardware_interface::return_type::OK;
+        return CallbackReturn::SUCCESS;
     }
 
-    hardware_interface::return_type RMSuperCAPSystem::stop() {
+    rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn RMSuperCAPSystem::on_deactivate(const rclcpp_lifecycle::State & previous_state) {
 
         RCLCPP_DEBUG(rclcpp::get_logger(this->system_name), "stopping");
 
-        this->status_ = hardware_interface::status::STOPPED;
+        //this->status_ = hardware_interface::status::STOPPED;
 
         RCLCPP_DEBUG(rclcpp::get_logger(this->system_name), "stopped");
 
-        return hardware_interface::return_type::OK;
+        return CallbackReturn::SUCCESS;
     }
 
-    hardware_interface::return_type RMSuperCAPSystem::read() {
+    hardware_interface::return_type RMSuperCAPSystem::read(const rclcpp::Time & time, const rclcpp::Duration & period) {
 
         RCLCPP_DEBUG(rclcpp::get_logger(this->system_name), "reading");
 
@@ -196,7 +196,7 @@ namespace gary_hardware {
         return hardware_interface::return_type::OK;
     }
 
-    hardware_interface::return_type RMSuperCAPSystem::write() {
+    hardware_interface::return_type RMSuperCAPSystem::write(const rclcpp::Time & time, const rclcpp::Duration & period) {
 
         RCLCPP_DEBUG(rclcpp::get_logger(this->system_name), "writing");
 

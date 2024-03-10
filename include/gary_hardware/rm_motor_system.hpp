@@ -1,9 +1,5 @@
 #pragma once
 
-
-#include <vector>
-
-#include "hardware_interface/base_interface.hpp"
 #include "hardware_interface/system_interface.hpp"
 #include "rclcpp/rclcpp.hpp"
 
@@ -24,25 +20,23 @@ namespace gary_hardware{
         std::shared_ptr<double> reset_position;
     }rm_motor_ctrl_t;
 
-
-    class RMMotorSystem :public hardware_interface::BaseInterface<hardware_interface::SystemInterface>
-    {
+    class RMMotorSystem : public hardware_interface::SystemInterface {
     public:
         RCLCPP_SHARED_PTR_DEFINITIONS(RMMotorSystem)
 
-        hardware_interface::return_type configure(const hardware_interface::HardwareInfo & info) override;
+        CallbackReturn on_init(const hardware_interface::HardwareInfo & info) override;
 
         std::vector<hardware_interface::StateInterface> export_state_interfaces() override;
 
         std::vector<hardware_interface::CommandInterface> export_command_interfaces() override;
 
-        hardware_interface::return_type start() override;
+        CallbackReturn on_activate(const rclcpp_lifecycle::State & previous_state) override;
 
-        hardware_interface::return_type stop() override;
+        CallbackReturn on_deactivate(const rclcpp_lifecycle::State & previous_state) override;
 
-        hardware_interface::return_type read() override;
+        hardware_interface::return_type read(const rclcpp::Time & time, const rclcpp::Duration & period) override;
 
-        hardware_interface::return_type write() override;
+        hardware_interface::return_type write(const rclcpp::Time & time, const rclcpp::Duration & period) override;
 
     private:
         std::string system_name;

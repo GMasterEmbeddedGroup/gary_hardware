@@ -1,18 +1,15 @@
 #pragma once
 
-
 #include <vector>
-
-#include "hardware_interface/base_interface.hpp"
 #include "hardware_interface/system_interface.hpp"
 #include "rclcpp/rclcpp.hpp"
-
+#include "rclcpp_lifecycle/state.hpp"
 #include "gary_can/socket_can_receiver.hpp"
 #include "gary_can/socket_can_sender.hpp"
 #include "utils/lk_tech_motors.hpp"
 #include "utils/offline_detector.hpp"
 
-namespace gary_hardware{
+namespace gary_hardware {
 
     typedef struct {
         std::shared_ptr<utils::LKTechMotor> motor;
@@ -22,27 +19,25 @@ namespace gary_hardware{
         std::shared_ptr<double> cmd_raw;
         std::shared_ptr<double> offline;
         std::shared_ptr<double> reset_position;
-    }lk_tech_motor_ctrl_t;
+    } lk_tech_motor_ctrl_t;
 
-
-    class LKTechMotorSystem :public hardware_interface::BaseInterface<hardware_interface::SystemInterface>
-    {
+    class LKTechMotorSystem : public hardware_interface::SystemInterface {
     public:
         RCLCPP_SHARED_PTR_DEFINITIONS(LKTechMotorSystem)
 
-        hardware_interface::return_type configure(const hardware_interface::HardwareInfo & info) override;
+        CallbackReturn on_init(const hardware_interface::HardwareInfo& info) override;
 
         std::vector<hardware_interface::StateInterface> export_state_interfaces() override;
 
         std::vector<hardware_interface::CommandInterface> export_command_interfaces() override;
 
-        hardware_interface::return_type start() override;
+        CallbackReturn on_activate(const rclcpp_lifecycle::State& previous_state) override;
 
-        hardware_interface::return_type stop() override;
+        CallbackReturn on_deactivate(const rclcpp_lifecycle::State& previous_state) override;
 
-        hardware_interface::return_type read() override;
+        hardware_interface::return_type read(const rclcpp::Time & time, const rclcpp::Duration & period) override;
 
-        hardware_interface::return_type write() override;
+        hardware_interface::return_type write(const rclcpp::Time & time, const rclcpp::Duration & period) override;
 
     private:
         std::string system_name;
@@ -53,3 +48,4 @@ namespace gary_hardware{
         std::vector<lk_tech_motor_ctrl_t> motors;
     };
 }
+

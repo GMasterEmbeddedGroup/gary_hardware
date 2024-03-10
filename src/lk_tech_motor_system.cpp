@@ -4,26 +4,29 @@
 #include <string>
 #include <memory>
 #include <vector>
+#include "rclcpp_lifecycle/state.hpp"
 
 namespace gary_hardware {
 
-    hardware_interface::return_type LKTechMotorSystem::configure(const hardware_interface::HardwareInfo &info) {
+
+    rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn
+    LKTechMotorSystem::on_init(const hardware_interface::HardwareInfo &info) {
         //get system name
         this->system_name = info.name;
 
         RCLCPP_DEBUG(rclcpp::get_logger(this->system_name), "configuring");
 
         //call the base class initializer
-        if (configure_default(info) != hardware_interface::return_type::OK) {
-            this->status_ = hardware_interface::status::UNKNOWN;
-            return hardware_interface::return_type::ERROR;
+        if (hardware_interface::SystemInterface::on_init(info) != CallbackReturn::SUCCESS)
+        {
+            return CallbackReturn::ERROR;
         }
 
         //check parameter "can_bus"
         if (info.hardware_parameters.count("can_bus") != 1) {
             RCLCPP_ERROR(rclcpp::get_logger(this->system_name), "invalid can bus definition in urdf");
-            this->status_ = hardware_interface::status::UNKNOWN;
-            return hardware_interface::return_type::ERROR;
+            //this->status_ = hardware_interface::status::UNKNOWN;
+            return CallbackReturn::ERROR;
         }
         std::string bus_name = info.hardware_parameters.at("can_bus");
         RCLCPP_DEBUG(rclcpp::get_logger(this->system_name), "using can bus %s", bus_name.c_str());
@@ -35,8 +38,8 @@ namespace gary_hardware {
         //check parameter "cmd_id"
         if (info.hardware_parameters.count("cmd_id") != 1) {
             RCLCPP_ERROR(rclcpp::get_logger(this->system_name), "invalid cmd id definition in urdf");
-            this->status_ = hardware_interface::status::UNKNOWN;
-            return hardware_interface::return_type::ERROR;
+            //this->status_ = hardware_interface::status::UNKNOWN;
+            return CallbackReturn::ERROR;
         }
         this->cmd_id = std::stoi(info.hardware_parameters.at("cmd_id"), nullptr, 16);
         RCLCPP_DEBUG(rclcpp::get_logger(this->system_name), "using cmd id 0x%x", cmd_id);
@@ -49,8 +52,8 @@ namespace gary_hardware {
             //check parameter "motor_id"
             if (i.parameters.count("motor_id") != 1) {
                 RCLCPP_ERROR(rclcpp::get_logger(this->system_name), "invalid motor id in urdf");
-                this->status_ = hardware_interface::status::UNKNOWN;
-                return hardware_interface::return_type::ERROR;
+                //this->status_ = hardware_interface::status::UNKNOWN;
+                return CallbackReturn::ERROR;
             }
             int motor_id = std::stoi(i.parameters.at("motor_id"));
 
@@ -75,8 +78,8 @@ namespace gary_hardware {
             //check if motor id and cmd id is mismatched
             if (new_motor->cmd_id != this->cmd_id) {
                 RCLCPP_ERROR(rclcpp::get_logger(this->system_name), "motor cmd id mismatched");
-                this->status_ = hardware_interface::status::UNKNOWN;
-                return hardware_interface::return_type::ERROR;
+                //this->status_ = hardware_interface::status::UNKNOWN;
+                return CallbackReturn::ERROR;
             }
 
             //make motor, name, cmd and offline detector in pairs
@@ -109,9 +112,9 @@ namespace gary_hardware {
                          this->can_sender->ifname.c_str());
         }
 
-        this->status_ = hardware_interface::status::CONFIGURED;
+        //this->status_ = hardware_interface::status::CONFIGURED;
         RCLCPP_INFO(rclcpp::get_logger(this->system_name), "configured");
-        return hardware_interface::return_type::OK;
+        return CallbackReturn::SUCCESS;
     }
 
     std::vector<hardware_interface::StateInterface> LKTechMotorSystem::export_state_interfaces() {
@@ -154,7 +157,7 @@ namespace gary_hardware {
         return command_interfaces;
     }
 
-    hardware_interface::return_type LKTechMotorSystem::start() {
+    rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn LKTechMotorSystem::on_activate(const rclcpp_lifecycle::State& previous_state) {
 
         RCLCPP_DEBUG(rclcpp::get_logger(this->system_name), "starting");
 
@@ -167,25 +170,25 @@ namespace gary_hardware {
             i.offlineDetector->update(true);
         }
 
-        this->status_ = hardware_interface::status::STARTED;
+        //this->status_ = hardware_interface::status::STARTED;
 
         RCLCPP_INFO(rclcpp::get_logger(this->system_name), "started");
 
-        return hardware_interface::return_type::OK;
+        return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
     }
 
-    hardware_interface::return_type LKTechMotorSystem::stop() {
+     rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn LKTechMotorSystem::on_deactivate(const rclcpp_lifecycle::State& previous_state) {
 
         RCLCPP_DEBUG(rclcpp::get_logger(this->system_name), "stopping");
 
-        this->status_ = hardware_interface::status::STOPPED;
+        //this->status_ = hardware_interface::status::STOPPED;
 
         RCLCPP_DEBUG(rclcpp::get_logger(this->system_name), "stopped");
 
-        return hardware_interface::return_type::OK;
+        return rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
     }
 
-    hardware_interface::return_type LKTechMotorSystem::read() {
+    hardware_interface::return_type LKTechMotorSystem::read(const rclcpp::Time & time, const rclcpp::Duration & period) {
 
         RCLCPP_DEBUG(rclcpp::get_logger(this->system_name), "reading");
 
@@ -258,7 +261,7 @@ namespace gary_hardware {
         return hardware_interface::return_type::OK;
     }
 
-    hardware_interface::return_type LKTechMotorSystem::write() {
+    hardware_interface::return_type LKTechMotorSystem::write(const rclcpp::Time & time, const rclcpp::Duration & period) {
 
         RCLCPP_DEBUG(rclcpp::get_logger(this->system_name), "writing");
 
@@ -269,7 +272,7 @@ namespace gary_hardware {
                 *i.reset_position = 0.0f;
             }
         }
-        
+
 
         //check if socket is down
         if (!this->can_sender->is_opened) {
