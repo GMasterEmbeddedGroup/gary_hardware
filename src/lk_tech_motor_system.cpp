@@ -1,4 +1,4 @@
-#include "gary_hardware/rm_motor_system.hpp"
+#include "gary_hardware/lk_tech_motor_system.hpp"
 
 #include <chrono>
 #include <string>
@@ -7,7 +7,7 @@
 
 namespace gary_hardware {
 
-    hardware_interface::return_type RMMotorSystem::configure(const hardware_interface::HardwareInfo &info) {
+    hardware_interface::return_type LKTechMotorSystem::configure(const hardware_interface::HardwareInfo &info) {
         //get system name
         this->system_name = info.name;
 
@@ -54,21 +54,13 @@ namespace gary_hardware {
             }
             int motor_id = std::stoi(i.parameters.at("motor_id"));
 
-            //check parameter "motor_type"
-            if (i.parameters.count("motor_type") != 1) {
-                RCLCPP_ERROR(rclcpp::get_logger(this->system_name), "invalid motor type in urdf");
-                this->status_ = hardware_interface::status::UNKNOWN;
-                return hardware_interface::return_type::ERROR;
-            }
-            std::string motor_type = i.parameters.at("motor_type");
-
             //check parameter "update_rate"
             int update_rate = 1000;
             if (i.parameters.count("update_rate") == 1) {
                 update_rate = std::stoi(i.parameters.at("update_rate"));
                 RCLCPP_INFO(rclcpp::get_logger(this->system_name),
-                            "[motor name %s id %d type %s] using custom update rate %d",
-                            motor_name.c_str(), motor_id, motor_type.c_str(), update_rate);
+                            "[motor name %s id %d] using custom update rate %d",
+                            motor_name.c_str(), motor_id, update_rate);
             }
             //calculate offline detection threshold
             double threshold = 1.0f / (double) update_rate;
@@ -76,22 +68,9 @@ namespace gary_hardware {
             if (threshold > 1.0f) threshold = 1.0f;
 
             //create new motor
-            std::shared_ptr<utils::RMMotor> new_motor;
+            std::shared_ptr<utils::LKTechMotor> new_motor;
 
-            //switch motor type
-            if (motor_type == "m3508") {
-                new_motor = std::make_shared<utils::RMMotor>(utils::M3508, motor_id);
-            } else if (motor_type == "m2006") {
-                new_motor = std::make_shared<utils::RMMotor>(utils::M2006, motor_id);
-            } else if (motor_type == "m6020") {
-                new_motor = std::make_shared<utils::RMMotor>(utils::M6020, motor_id);
-            } else if (motor_type == "m3508_gearless") {
-                new_motor = std::make_shared<utils::RMMotor>(utils::M3508_GEARLESS, motor_id);
-            } else {
-                RCLCPP_ERROR(rclcpp::get_logger(this->system_name), "invalid motor type");
-                this->status_ = hardware_interface::status::UNKNOWN;
-                return hardware_interface::return_type::ERROR;
-            }
+            new_motor = std::make_shared<utils::LKTechMotor>(motor_id);
 
             //check if motor id and cmd id is mismatched
             if (new_motor->cmd_id != this->cmd_id) {
@@ -101,7 +80,7 @@ namespace gary_hardware {
             }
 
             //make motor, name, cmd and offline detector in pairs
-            rm_motor_ctrl_t motor_ctrl;
+            lk_tech_motor_ctrl_t motor_ctrl;
             motor_ctrl.motor = new_motor;
             motor_ctrl.cmd = std::make_shared<double>(0);
             motor_ctrl.cmd_raw = std::make_shared<double>(0);
@@ -120,8 +99,8 @@ namespace gary_hardware {
             this->motors.emplace_back(motor_ctrl);
 
             RCLCPP_INFO(rclcpp::get_logger(this->system_name),
-                        "add new motor, name: %s, type: %s, can bus: %s, cmd id: 0x%x, feedback id: 0x%x",
-                        motor_name.c_str(), motor_type.c_str(), bus_name.c_str(), new_motor->cmd_id, new_motor->feedback_id);
+                        "add new motor, name: %s, can bus: %s, cmd id: 0x%x, feedback id: 0x%x",
+                        motor_name.c_str(), bus_name.c_str(), new_motor->cmd_id, new_motor->feedback_id);
         }
 
         //open can sender
@@ -135,7 +114,7 @@ namespace gary_hardware {
         return hardware_interface::return_type::OK;
     }
 
-    std::vector<hardware_interface::StateInterface> RMMotorSystem::export_state_interfaces() {
+    std::vector<hardware_interface::StateInterface> LKTechMotorSystem::export_state_interfaces() {
 
         //creat state interfaces
         std::vector<hardware_interface::StateInterface> state_interfaces;
@@ -156,7 +135,7 @@ namespace gary_hardware {
         return state_interfaces;
     }
 
-    std::vector<hardware_interface::CommandInterface> RMMotorSystem::export_command_interfaces() {
+    std::vector<hardware_interface::CommandInterface> LKTechMotorSystem::export_command_interfaces() {
 
         //creat state interfaces
         std::vector<hardware_interface::CommandInterface> command_interfaces;
@@ -175,7 +154,7 @@ namespace gary_hardware {
         return command_interfaces;
     }
 
-    hardware_interface::return_type RMMotorSystem::start() {
+    hardware_interface::return_type LKTechMotorSystem::start() {
 
         RCLCPP_DEBUG(rclcpp::get_logger(this->system_name), "starting");
 
@@ -195,7 +174,7 @@ namespace gary_hardware {
         return hardware_interface::return_type::OK;
     }
 
-    hardware_interface::return_type RMMotorSystem::stop() {
+    hardware_interface::return_type LKTechMotorSystem::stop() {
 
         RCLCPP_DEBUG(rclcpp::get_logger(this->system_name), "stopping");
 
@@ -206,7 +185,7 @@ namespace gary_hardware {
         return hardware_interface::return_type::OK;
     }
 
-    hardware_interface::return_type RMMotorSystem::read() {
+    hardware_interface::return_type LKTechMotorSystem::read() {
 
         RCLCPP_DEBUG(rclcpp::get_logger(this->system_name), "reading");
 
@@ -228,8 +207,8 @@ namespace gary_hardware {
                 if (!this->can_receiver->open_socket(i.motor->feedback_id)) {
                     //reopen failed
                     RCLCPP_DEBUG(rclcpp::get_logger(this->system_name),
-                                         "[%s] can receiver reopen failed, id 0x%x",
-                                         this->can_receiver->ifname.c_str(), i.motor->feedback_id);
+                                 "[%s] can receiver reopen failed, id 0x%x",
+                                 this->can_receiver->ifname.c_str(), i.motor->feedback_id);
                     i.offlineDetector->update(false);
                     continue;
                 }
@@ -243,8 +222,13 @@ namespace gary_hardware {
             while (true) {
                 struct can_frame can_recv_frame_temp{};
                 if (this->can_receiver->read(i.motor->feedback_id, &can_recv_frame_temp)) {
-                    can_recv_frame = can_recv_frame_temp;
-                    succ |= true;
+                    //skip send packet
+                    if (can_recv_frame_temp.data[1] == 0 && can_recv_frame_temp.data[2] == 0 && can_recv_frame_temp.data[3] == 0) {
+                        succ |= false;
+                    } else {
+                        can_recv_frame = can_recv_frame_temp;
+                        succ |= true;
+                    }
                 } else {
                     succ |= false;
                     break;
@@ -274,7 +258,7 @@ namespace gary_hardware {
         return hardware_interface::return_type::OK;
     }
 
-    hardware_interface::return_type RMMotorSystem::write() {
+    hardware_interface::return_type LKTechMotorSystem::write() {
 
         RCLCPP_DEBUG(rclcpp::get_logger(this->system_name), "writing");
 
@@ -285,15 +269,15 @@ namespace gary_hardware {
                 *i.reset_position = 0.0f;
             }
         }
-
+        
 
         //check if socket is down
         if (!this->can_sender->is_opened) {
             //reopen socket
             if (!this->can_sender->open_socket()) {
                 RCLCPP_DEBUG(rclcpp::get_logger(this->system_name),
-                                     "[%s] can sender reopen failed",
-                                     this->can_sender->ifname.c_str());
+                             "[%s] can sender reopen failed",
+                             this->can_sender->ifname.c_str());
                 return hardware_interface::return_type::ERROR;
             }
         }
@@ -316,13 +300,15 @@ namespace gary_hardware {
                 motor_cmd[1] = static_cast<int16_t>(*i.cmd_raw) & 0xFF;
             }
 
-            //get motor id
-            int id = i.motor->motor_id;
-            if (id >= 5) id -= 4;
-
             //fill the cmd in a can frame
-            frame.data[(id - 1) * 2 + 0] = motor_cmd[0];
-            frame.data[(id - 1) * 2 + 1] = motor_cmd[1];
+            frame.data[0] = 0xa0;
+            frame.data[1] = 0x00;
+            frame.data[2] = 0x00;
+            frame.data[3] = 0x00;
+            frame.data[4] = motor_cmd[1];
+            frame.data[5] = motor_cmd[0];
+            frame.data[6] = 0x00;
+            frame.data[7] = 0x00;
 
             //always clean the command to keep safe
             *i.cmd = 0;
@@ -347,4 +333,4 @@ namespace gary_hardware {
 
 #include "pluginlib/class_list_macros.hpp"
 
-PLUGINLIB_EXPORT_CLASS(gary_hardware::RMMotorSystem, hardware_interface::SystemInterface)
+PLUGINLIB_EXPORT_CLASS(gary_hardware::LKTechMotorSystem, hardware_interface::SystemInterface)

@@ -9,26 +9,26 @@
 
 #include "gary_can/socket_can_receiver.hpp"
 #include "gary_can/socket_can_sender.hpp"
-#include "utils/rm_motors.hpp"
+#include "utils/lk_tech_motors.hpp"
 #include "utils/offline_detector.hpp"
 
 namespace gary_hardware{
 
     typedef struct {
-        std::shared_ptr<utils::RMMotor> motor;
+        std::shared_ptr<utils::LKTechMotor> motor;
         std::shared_ptr<utils::OfflineDetector> offlineDetector;
         std::string motor_name;
         std::shared_ptr<double> cmd;
         std::shared_ptr<double> cmd_raw;
         std::shared_ptr<double> offline;
         std::shared_ptr<double> reset_position;
-    }rm_motor_ctrl_t;
+    }lk_tech_motor_ctrl_t;
 
 
-    class RMMotorSystem :public hardware_interface::BaseInterface<hardware_interface::SystemInterface>
+    class LKTechMotorSystem :public hardware_interface::BaseInterface<hardware_interface::SystemInterface>
     {
     public:
-        RCLCPP_SHARED_PTR_DEFINITIONS(RMMotorSystem)
+        RCLCPP_SHARED_PTR_DEFINITIONS(LKTechMotorSystem)
 
         hardware_interface::return_type configure(const hardware_interface::HardwareInfo & info) override;
 
@@ -50,6 +50,6 @@ namespace gary_hardware{
         std::shared_ptr<driver::can::SocketCANSender> can_sender;
         std::shared_ptr<driver::can::SocketCANReceiver> can_receiver;
 
-        std::vector<rm_motor_ctrl_t> motors;
+        std::vector<lk_tech_motor_ctrl_t> motors;
     };
 }

@@ -10,6 +10,7 @@
 namespace gary_hardware {
 
     hardware_interface::return_type RMIMUSensor::configure(const hardware_interface::HardwareInfo &info) {
+        use_corrected_angle = false;
 
         //get sensor name
         this->sensor_name = info.name;
@@ -54,6 +55,12 @@ namespace gary_hardware {
         this->can_ids[1] = std::stoi(info.hardware_parameters.at("gyro_can_id"), nullptr, 16);
         RCLCPP_DEBUG(rclcpp::get_logger(this->sensor_name), "using gyroscope can id 0x%x", this->can_ids[1]);
 
+        //check parameter "corrected_angle_can_id"
+        if (info.hardware_parameters.count("corrected_angle_can_id") == 1) {
+            this->can_ids[1] = std::stoi(info.hardware_parameters.at("corrected_angle_can_id"), nullptr, 16);
+            RCLCPP_DEBUG(rclcpp::get_logger(this->sensor_name), "using corrected_angle can id 0x%x", this->can_ids[3]);
+            use_corrected_angle = true;
+        }
 
         //check parameter "accel_can_id"
         if (info.hardware_parameters.count("accel_can_id") != 1) {
@@ -91,7 +98,7 @@ namespace gary_hardware {
         //bind can id
         for (int can_id: this->can_ids) {
             if (!this->can_receiver->open_socket(can_id)) {
-                RCLCPP_ERROR(rclcpp::get_logger(this->sensor_name), "[%s] failed to bind can id 0x%x to bus",
+                RCLCPP_DEBUG(rclcpp::get_logger(this->sensor_name), "[%s] failed to bind can id 0x%x to bus",
                              this->can_receiver->ifname.c_str(), can_id);
             }
         }
@@ -159,11 +166,16 @@ namespace gary_hardware {
         RCLCPP_DEBUG(rclcpp::get_logger(this->sensor_name), "reading");
 
         //update offline status
-        this->offline = static_cast<double>(this->offlineDetector->offline);
         if (this->offlineDetector->offline) {
-            rclcpp::Clock clock;
-            RCLCPP_ERROR_THROTTLE(rclcpp::get_logger(this->sensor_name), clock, 1000, "[%s] offline",
-                                  this->sensor_name.c_str());
+            if (this->offline == 0)
+                RCLCPP_ERROR(rclcpp::get_logger(this->sensor_name), "[%s] imu offline",
+                             this->sensor_name.c_str());
+            this->offline = 1;
+        } else {
+            if (this->offline == 1)
+                RCLCPP_ERROR(rclcpp::get_logger(this->sensor_name), "[%s] imu online",
+                             this->sensor_name.c_str());
+            this->offline = 0;
         }
 
         //check if socket is down
@@ -171,8 +183,7 @@ namespace gary_hardware {
             if (!this->can_receiver->is_opened[can_id]) {
                 //reopen socket
                 if (!this->can_receiver->open_socket(can_id)) {
-                    rclcpp::Clock clock;
-                    RCLCPP_WARN_THROTTLE(rclcpp::get_logger(this->sensor_name), clock, 1000,
+                    RCLCPP_DEBUG(rclcpp::get_logger(this->sensor_name),
                                          "[%s] can receiver reopen failed, id 0x%x",
                                          this->can_receiver->ifname.c_str(), can_id);
                     this->offlineDetector->update(false);
@@ -214,10 +225,17 @@ namespace gary_hardware {
             double tmp_y = this->sensor_data[5];
             double tmp_z = this->sensor_data[6];
 
-            this->sensor_data[4] = atan2(2 * (orien_y * orien_z + orien_w * orien_x), orien_w * orien_w - orien_x * orien_x - orien_y * orien_y + orien_z * orien_z);
-            this->sensor_data[5] = asin(-2 * (orien_x * orien_z - orien_w * orien_y));
-            this->sensor_data[6] = atan2(2 * (orien_x * orien_y + orien_w * orien_z), orien_w * orien_w + orien_x * orien_x - orien_y * orien_y - orien_z * orien_z);
-
+            if(!use_corrected_angle) {
+                this->sensor_data[4] = atan2(2 * (orien_y * orien_z + orien_w * orien_x),
+                                             orien_w * orien_w - orien_x * orien_x - orien_y * orien_y +
+                                             orien_z * orien_z);
+                this->sensor_data[5] = asin(-2 * (orien_x * orien_z - orien_w * orien_y));
+                this->sensor_data[6] = atan2(2 * (orien_x * orien_y + orien_w * orien_z),
+                                             orien_w * orien_w + orien_x * orien_x - orien_y * orien_y -
+                                             orien_z * orien_z);
+            }else{
+                //do nothing
+            }
             double euler_x_sum = this->sensor_data[4] - tmp_x;
             if (euler_x_sum > M_PI) euler_x_sum -= M_PI * 2;
             if (euler_x_sum < -M_PI) euler_x_sum += M_PI * 2;
@@ -278,6 +296,30 @@ namespace gary_hardware {
             auto raw_accel_z = (int16_t) (frame.data[4] | frame.data[5] << 8);
             this->sensor_data[15] = (double) utils::half_to_float(raw_accel_z);
             read_succ_cnt++;
+        }
+
+
+        if(use_corrected_angle){
+            succ = false;
+            while (true) {
+                struct can_frame can_recv_frame_temp{};
+                if (this->can_receiver->read(this->can_ids[3], &can_recv_frame_temp)) {
+                    frame = can_recv_frame_temp;
+                    succ |= true;
+                } else {
+                    succ |= false;
+                    break;
+                }
+            }
+            if (succ) {
+                auto raw_euler_x = (int16_t) (frame.data[0] | frame.data[1] << 8);
+                this->sensor_data[4] = (double) utils::half_to_float(raw_euler_x);
+                auto raw_euler_y = (int16_t) (frame.data[2] | frame.data[3] << 8);
+                this->sensor_data[5] = (double) utils::half_to_float(raw_euler_y);
+                auto raw_euler_z = (int16_t) (frame.data[4] | frame.data[5] << 8);
+                this->sensor_data[6] = (double) utils::half_to_float(raw_euler_z);
+                read_succ_cnt++;
+            }
         }
 
         //update offline status

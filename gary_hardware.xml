@@ -16,4 +16,20 @@
         </description>
     </class>
 
+    <class name="gary_hardware/LKTechMotorSystem"
+           type="gary_hardware::LKTechMotorSystem"
+           base_class_type="hardware_interface::SystemInterface">
+        <description>
+            LK Tech Motor system
+        </description>
+    </class>
+
+    <class name="gary_hardware/RMSuperCAPSystem"
+           type="gary_hardware::RMSuperCAPSystem"
+           base_class_type="hardware_interface::SystemInterface">
+        <description>
+            RM SuperCAP system
+        </description>
+    </class>
+
 </library>

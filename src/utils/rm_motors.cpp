@@ -188,13 +188,13 @@ bool RMMotor::feedback(const uint8_t fdb_data[8]) {
     *this->feedback_data["position"] += delta * this->position_ratio;
 
     //get ecd
-    *this->feedback_data["encoder"] = (double) _ecd * this->position_ratio;
+    *this->feedback_data["encoder"] = static_cast<double>(_ecd) * this->position_ratio - M_PI;
 
     //get raw ecd
-    *this->feedback_data["encoder_raw"] = (double) _ecd;
+    *this->feedback_data["encoder_raw"] = static_cast<double>(_ecd) ;
 
     //get velocity
-    *this->feedback_data["velocity"] = static_cast<double>((_rpm)) * this->velocity_ratio;
+    *this->feedback_data["velocity"] = static_cast<double>(_rpm) * this->velocity_ratio;
 
     //get rpm
     *this->feedback_data["rpm"] = static_cast<double>(_rpm);
@@ -208,8 +208,12 @@ bool RMMotor::feedback(const uint8_t fdb_data[8]) {
     //get temperature
     //if the motor has temperature sensor
     if (this->has_temperature_sensor) {
-        *this->feedback_data["temperature"] = _temperature;
+        *this->feedback_data["temperature"] = static_cast<double>(_temperature);
     }
 
     return true;
+}
+
+void RMMotor::reset_position() {
+    *this->feedback_data["position"] = 0.0f;
 }
